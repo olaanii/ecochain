@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["createMany"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String          @id @default(cuid())
+  clerkId         String          @unique
+  initiaAddress   String          @unique
+  initiaUsername  String?
+  username        String?         @unique
+  displayName     String?
+  region          String?
+  streakDays      Int             @default(0)
+  totalRewards    Int             @default(0)
+  level           Int             @default(1)
+  badges          Json            @default("[]")
+  lastTaskAt      DateTime?       // For streak tracking
+  preferences     Json?           // Notification preferences, language, etc.
+  role            String          @default("user") // user, admin, owner
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  verifications   Verification[]
+  ledgerEntries   LedgerEntry[]
+  bridgeRequests  BridgeRequest[]
+  stakes          Stake[]
+  redemptions     Redemption[]
+  votes           Vote[]
+  notifications   Notification[]
+
+  @@index([initiaAddress])
+  @@index([totalRewards])
+  @@index([level])
+  @@index([region])
+  @@index([role])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // verification_approved, verification_rejected, stake_unlock, proposal_ending, redemption_complete, transaction_failed
+  title     String
+  message   String
+  data      Json?    // Additional data (transaction hash, verification ID, etc.)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model Task {
+  id                 String         @id @default(cuid())
+  slug               String         @unique
+  name               String
+  description        String
+  verificationHint   String
+  category           String         // transit, recycling, energy, community
+  baseReward         Int
+  bonusFactor        Float          @default(1.0)
+  verificationMethod String         // photo, api, iot, manual, oracle
+  requirements       Json           @default("[]")
+  active             Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  verifications      Verification[]
+
+  @@index([category])
+  @@index([active])
+  @@index([baseReward])
+}
+
+model Verification {
+  id               String   @id @default(cuid())
+  taskId           String
+  userId           String
+  proofHash        String   @unique
+  proofType        String   // photo, transit, weight, sensor, api
+  proofData        Json?    // Encrypted or reference to IPFS
+  geoHash          String?
+  status           String   @default("pending") // pending, verified, rejected, expired
+  reward           Int      @default(0)
+  oracleSource     String?
+  oracleConfidence Float?
+  transactionHash  String?
+  metadata         Json?
+  ipfsHash         String?  // IPFS hash for proof storage
+  fraudScore       Float?   // Fraud detection score (0.0 to 1.0)
+  reviewedBy       String?  // Admin user ID if manually reviewed
+  rejectionReason  String?
+  verifiedAt       DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([taskId])
+  @@index([taskId, userId])
+  @@index([status])
+  @@index([verifiedAt])
+  @@index([createdAt])
+  @@index([fraudScore])
+}
+
+model LedgerEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  amount          Int
+  type            String   // mint, burn, stake, unstake, reward, redemption
+  source          String   // Task ID, Stake ID, Redemption ID, etc.
+  transactionHash String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model RewardOffering {
+  id          String      @id @default(cuid())
+  title       String
+  description String
+  cost        Int
+  partner     String
+  category    String
+  available   Boolean     @default(true)
+  stock       Int?
+  expiresAt   DateTime?
+  imageUrl    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  redemptions Redemption[]
+
+  @@index([category])
+  @@index([available])
+  @@index([cost])
+  @@index([expiresAt])
+}
+
+model BridgeRequest {
+  id              String   @id @default(cuid())
+  userId          String?
+  amount          Int
+  denom           String
+  sourceChain     String
+  targetChain     String
+  status          String   // pending, confirmed, completed, failed
+  transactionId   String?
+  transactionLink String?
+  trackingUrl     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DaoProposal {
+  id                 String              @id @default(cuid())
+  title              String              @unique
+  description        String
+  proposer           String
+  status             String
+  votesFor           Int
+  votesAgainst       Int
+  votesAbstain       Int                 @default(0)
+  quorum             Int
+  startTime          DateTime
+  endTime            DateTime
+  executionTime      DateTime?
+  createdAt          DateTime            @default(now())
+  votes              Vote[]
+  proposalExecutions ProposalExecution[]
+}
+
+model Stake {
+  id              String   @id @default(cuid())
+  userId          String
+  amount          Int
+  apy             Float
+  startTime       DateTime
+  duration        Int
+  endTime         DateTime
+  status          String   @default("active")
+  accruedRewards  Float    @default(0)
+  transactionHash String
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Redemption {
+  id              String         @id @default(cuid())
+  userId          String
+  rewardId        String
+  cost            Int
+  voucherCode     String?
+  transactionHash String?
+  status          String         @default("completed") // pending, completed, failed
+  redeemedAt      DateTime       @default(now())
+
+  user   User           @relation(fields: [userId], references: [id])
+  reward RewardOffering @relation(fields: [rewardId], references: [id])
+
+  @@index([userId])
+  @@index([rewardId])
+  @@index([redeemedAt])
+  @@index([status])
+}
+
+model Vote {
+  id          String   @id @default(cuid())
+  userId      String
+  proposalId  String
+  support     String
+  reason      String?
+  votingPower Int
+  votedAt     DateTime @default(now())
+
+  user     User        @relation(fields: [userId], references: [id])
+  proposal DaoProposal @relation(fields: [proposalId], references: [id])
+
+  @@unique([userId, proposalId])
+  @@index([userId])
+  @@index([proposalId])
+  @@index([votedAt])
+}
+
+model ProposalExecution {
+  id              String      @id @default(cuid())
+  proposalId      String
+  executedAt      DateTime    @default(now())
+  transactionHash String
+  status          String
+
+  proposal DaoProposal @relation(fields: [proposalId], references: [id])
+
+  @@index([proposalId])
+  @@index([status])
+  @@index([executedAt])
+}
+
