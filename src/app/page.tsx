@@ -21,6 +21,7 @@ import { useInterwovenKit } from "@initia/interwovenkit-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TopNavBar } from "@/components/layout/top-nav-bar";
+import { useWallet } from "@/contexts/wallet-context";
 import { fallbackDashboard, type EcoDataResponse } from "@/lib/dashboard-data";
 import { initiaSubmission } from "@/lib/initia/submission";
 import { hasClerkSetup, hasWalletDemoSetup } from "@/lib/runtime-config";
@@ -453,11 +454,22 @@ export default function Home() {
 }
 
 function LandingWalletActions() {
-  const { openConnect } = useInterwovenKit();
+  const { initiaAddress, connect } = useWallet();
+  const { openWallet } = useInterwovenKit();
 
   return (
-    <Button className="landing-primary-button px-6 py-3 text-sm" onClick={() => openConnect()}>
-      Launch wallet session
+    <Button
+      className="landing-primary-button px-6 py-3 text-sm"
+      onClick={() => {
+        if (initiaAddress) {
+          openWallet();
+          return;
+        }
+
+        void connect();
+      }}
+    >
+      {initiaAddress ? "Open wallet" : "Launch wallet session"}
     </Button>
   );
 }

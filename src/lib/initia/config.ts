@@ -39,24 +39,10 @@ const customChain = {
 export const initiaConfig = {
   ...TESTNET,
   customChain,
-  defaultChainId: process.env.NEXT_PUBLIC_INITIA_CHAIN_ID ?? TESTNET.defaultChainId,
-  routerApiUrl:
-    process.env.NEXT_PUBLIC_INITIA_ROUTER_API_URL ?? TESTNET.routerApiUrl,
-  registryUrl:
-    process.env.NEXT_PUBLIC_INITIA_REGISTRY_URL ?? TESTNET.registryUrl,
-  glyphUrl: process.env.NEXT_PUBLIC_INITIA_GLYPH_URL ?? TESTNET.glyphUrl,
-  usernamesModuleAddress:
-    process.env.NEXT_PUBLIC_INITIA_USERNAMES_MODULE ??
-    "initia1usernamesmodule000000000000",
-  lockStakeModuleAddress:
-    process.env.NEXT_PUBLIC_INITIA_LOCK_STAKE_MODULE ??
-    "initia1lockstake0000000000000",
-  minityUrl: process.env.NEXT_PUBLIC_INITIA_MINITY_URL ?? "https://minity.initia.xyz",
-  dexUrl: process.env.NEXT_PUBLIC_INITIA_DEX_URL ?? "https://dex.initia.xyz",
-  vipUrl: process.env.NEXT_PUBLIC_INITIA_VIP_URL ?? "https://vip.initia.xyz",
+  customChains: [customChain],
+  defaultChainId: customChain.chain_id,
   theme: "dark",
   enableAutoSign: true,
   disableAnalytics: true,
-
 } satisfies InitiaConfig;
 

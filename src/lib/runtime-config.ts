@@ -1,7 +1,7 @@
 
 export const runtimeConfig = {
   clerkPublishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "",
-  initiaChainId: process.env.NEXT_PUBLIC_INITIA_CHAIN_ID ?? "initia-test-1",
+  initiaChainId: process.env.NEXT_PUBLIC_INITIA_CHAIN_ID ?? "ecochain105",
 };
 
 export const setupChecklist = [

@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TopNavBar } from "@/components/layout/top-nav-bar";
 import { fallbackDashboard, type EcoDataResponse } from "@/lib/dashboard-data";
-import { initiaConfig } from "@/lib/initia/config";
 import {
   hasClerkSetup,
   runtimeConfig,
@@ -34,7 +33,7 @@ export function DashboardPage() {
     initialData: fallbackDashboard,
   });
 
-  const { address, openConnect } = useInterwovenKit();
+  const { address, openConnect, openWallet } = useInterwovenKit();
   const walletConnected = !!address;
   const walletReady = hasClerkSetup && walletConnected;
   const missingSetup = setupChecklist.filter((item) => !item.value);
@@ -150,7 +149,7 @@ export function DashboardPage() {
       <div className="hero-orb" />
       <div className="hero-orb alt" />
       {missingSetup.length > 0 && (
-        <section className="surface relative overflow-hidden rounded-[2rem] border border-amber-400/20 px-5 py-4">
+        <section className="surface relative overflow-hidden rounded-4xl border border-amber-400/20 px-5 py-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-300">
@@ -228,7 +227,7 @@ export function DashboardPage() {
           </div>
           <div className="grid gap-4">
             {heroStats.map((stat) => (
-              <div key={stat.label} className="surface-muted rounded-[1.5rem] px-5 py-4">
+              <div key={stat.label} className="surface-muted rounded-3xl px-5 py-4">
                 <p className="text-[11px] uppercase tracking-[0.35em] text-emerald-200/90">
                   {stat.label}
                 </p>
@@ -247,7 +246,7 @@ export function DashboardPage() {
               {chainStatus?.status ?? "Loading status"}
             </p>
             <p className="font-semibold text-white">
-              Chain: {chainStatus?.chainId ?? "initia-test-1"}
+              Chain: {chainStatus?.chainId ?? runtimeConfig.initiaChainId}
             </p>
             <p className="text-xs text-gray-400">Block time: {chainStatus?.blockTime ?? "100ms"}</p>
             <p className="text-xs text-gray-400">Auto-sign: {chainStatus?.autoSign ?? "Enabled"}</p>
@@ -534,7 +533,7 @@ function ClerkActionSlot() {
       {user ? (
         <div className="flex items-center gap-3 rounded-full border border-white/10 bg-black/30 px-3 py-2">
           <UserButton />
-          <span className="max-w-[11rem] truncate text-sm text-slate-200">
+          <span className="max-w-44 truncate text-sm text-slate-200">
             {user?.fullName ?? user?.username ?? user?.primaryEmailAddress?.emailAddress ?? "Signed in"}
           </span>
         </div>
@@ -553,12 +552,12 @@ function ClerkActionSlot() {
 }
 
 function WalletActionSlot() {
-  const { openBridge, openConnect, openDeposit, openWithdraw } = useInterwovenKit();
+  const { openBridge, openWallet, openDeposit, openWithdraw } = useInterwovenKit();
 
   return (
     <div className="flex flex-wrap gap-3">
-      <Button type="button" onClick={openConnect}>
-        Connect Initia wallet
+      <Button type="button" onClick={openWallet}>
+        Manage wallet
       </Button>
       <Button type="button" onClick={() => openBridge({ srcChainId: runtimeConfig.initiaChainId })}>
         Open bridge
@@ -587,7 +586,7 @@ function WalletActionFallbackSlot({ onConnect }: { onConnect: () => void }) {
 }
 
 function WalletBridgeSlot({ missionSummary }: { missionSummary: string }) {
-  const { openBridge, openConnect, openDeposit, openWithdraw, address, username } =
+  const { openBridge, openWallet, openDeposit, openWithdraw, address, username } =
     useInterwovenKit();
 
   return (
@@ -601,8 +600,8 @@ function WalletBridgeSlot({ missionSummary }: { missionSummary: string }) {
         </p>
         <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{missionSummary}</p>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => openConnect()}>Connect</Button>
-          <Button onClick={() => openBridge({ srcChainId: initiaConfig.defaultChainId })}>
+          <Button onClick={() => openWallet()}>Open wallet</Button>
+          <Button onClick={() => openBridge({ srcChainId: runtimeConfig.initiaChainId })}>
             Open Interwoven bridge
           </Button>
           <Button onClick={() => openDeposit({ denoms: ["INITIA"] })}>Deposit</Button>
@@ -621,7 +620,7 @@ function WalletBridgeFallback({ missionSummary, onConnect }: { missionSummary: s
     <>
       <div className="space-y-3 text-sm text-gray-200">
         <p>
-          Connected wallet: <span className="font-mono text-white text-emerald-400">Wallet connection required</span>
+          Connected wallet: <span className="font-mono text-emerald-400">Wallet connection required</span>
         </p>
         <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{missionSummary}</p>
         <div className="flex flex-wrap gap-2">
@@ -639,7 +638,7 @@ function WalletBridgeFallback({ missionSummary, onConnect }: { missionSummary: s
           </Button>
         </div>
       </div>
-      <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-black/30 p-5 text-xs text-slate-300">
+      <div className="mt-6 rounded-3xl border border-white/10 bg-black/30 p-5 text-xs text-slate-300">
         Interwoven bridge widgets appear here once you connect your Initia wallet.
       </div>
     </>
