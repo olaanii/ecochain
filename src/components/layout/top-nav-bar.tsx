@@ -33,7 +33,7 @@ export function TopNavBar({
 }: TopNavBarProps) {
   const pathname = usePathname();
   const { isSignedIn } = useUser();
-  const { address, openConnect } = useInterwovenKit();
+  const { initiaAddress, openConnect, openWallet } = useInterwovenKit();
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Default app navigation items
@@ -98,33 +98,31 @@ export function TopNavBar({
         {variant === "app" && (
           <>
             {/* Wallet Connection */}
-            {isSignedIn && (
-              <div className="hidden md:block">
-                {address ? (
-                  <button
-                    onClick={openConnect}
-                    className={clsx(
-                      "rounded-lg px-3 py-1.5 text-xs font-medium",
-                      "border border-[#cafd00] bg-[#cafd00]/10",
-                      "text-[#cafd00] transition-colors hover:bg-[#cafd00]/20",
-                    )}
-                  >
-                    {address.slice(0, 6)}...{address.slice(-4)}
-                  </button>
-                ) : (
-                  <button
-                    onClick={openConnect}
-                    className={clsx(
-                      "rounded-lg px-3 py-1.5 text-xs font-medium",
-                      "border border-[#adaaaa] bg-transparent",
-                      "text-[#adaaaa] transition-colors hover:border-white hover:text-white",
-                    )}
-                  >
-                    Connect Wallet
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="hidden md:block">
+              {initiaAddress ? (
+                <button
+                  onClick={openWallet}
+                  className={clsx(
+                    "rounded-lg px-3 py-1.5 text-xs font-medium",
+                    "border border-[#cafd00] bg-[#cafd00]/10",
+                    "text-[#cafd00] transition-colors hover:bg-[#cafd00]/20",
+                  )}
+                >
+                  {initiaAddress.slice(0, 6)}...{initiaAddress.slice(-4)}
+                </button>
+              ) : (
+                <button
+                  onClick={openConnect}
+                  className={clsx(
+                    "rounded-lg px-3 py-1.5 text-xs font-medium",
+                    "border border-[#adaaaa] bg-transparent",
+                    "text-[#adaaaa] transition-colors hover:border-white hover:text-white",
+                  )}
+                >
+                  Connect Wallet
+                </button>
+              )}
+            </div>
 
             {/* Authentication Controls */}
             {isSignedIn ? (

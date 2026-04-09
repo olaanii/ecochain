@@ -4,6 +4,7 @@ import React from "react";
 import { useWallet } from "@/contexts/wallet-context";
 import { Button } from "@/components/ui/button";
 import { Loader2, Wallet } from "lucide-react";
+import { useInterwovenKit } from "@initia/interwovenkit-react";
 
 /**
  * Wallet Connect Button Component
@@ -16,6 +17,7 @@ import { Loader2, Wallet } from "lucide-react";
  */
 export function WalletConnectButton() {
   const { isConnected, isConnecting, error, connect, initiaAddress } = useWallet();
+  const { openWallet } = useInterwovenKit();
 
   const handleCopyAddress = () => {
     if (initiaAddress) {
@@ -31,15 +33,23 @@ export function WalletConnectButton() {
   if (isConnected && initiaAddress) {
     return (
       <div className="flex items-center gap-2">
-        <button
-          onClick={handleCopyAddress}
-          className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium text-slate-100 transition-colors"
-          title="Click to copy address"
+        <Button
+          type="button"
+          onClick={openWallet}
+          className="gap-2 px-3 py-2 text-sm font-medium"
+          variant="primary"
         >
           <span className="inline-flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
             {shortenAddress(initiaAddress)}
           </span>
+        </Button>
+        <button
+          onClick={handleCopyAddress}
+          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-white/10"
+          title="Click to copy address"
+        >
+          Copy
         </button>
       </div>
     );

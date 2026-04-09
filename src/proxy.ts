@@ -12,17 +12,8 @@ const protectedRoutes = [
   "/api/bridge",
 ];
 
-// Public routes that don't require authentication
-// Note: These are documented here for clarity, but the middleware
-// allows all non-protected routes by default
-const publicRoutes = [
-  "/",
-  "/discover",
-  "/bridge",
-  "/figma-screens",
-  "/api/tasks",
-  "/api/rewards",
-];
+// Public routes don't need explicit listing here because middleware
+// allows all non-protected routes by default.
 
 export default clerkMiddleware(async (auth, request: NextRequest) => {
   const { userId } = await auth();
@@ -41,7 +32,7 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
 
   // Allow the request to proceed for:
   // - Authenticated users accessing protected routes
-  // - Anyone accessing public routes (listed above)
+  // - Anyone accessing non-protected routes
   // - Any other routes
   return NextResponse.next();
 });

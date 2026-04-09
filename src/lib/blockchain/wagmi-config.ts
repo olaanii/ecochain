@@ -11,9 +11,13 @@ import { defineChain } from 'viem';
  * - Add chain configuration (chainId, RPC URLs, block explorer)
  */
 
+const INITIA_EVM_CHAIN_ID = Number(
+  process.env.NEXT_PUBLIC_INITIA_EVM_CHAIN_ID ?? '1598283435881984'
+);
+
 // Define the Initia Appchain (Ecochain) as a custom chain
 export const initiaAppchain = defineChain({
-  id: parseInt(process.env.NEXT_PUBLIC_INITIA_CHAIN_ID?.split('').filter(c => /\d/.test(c)).join('') || '105'),
+  id: INITIA_EVM_CHAIN_ID,
   name: 'Initia Ecochain',
   nativeCurrency: {
     decimals: 18,
