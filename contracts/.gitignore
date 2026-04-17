@@ -2,6 +2,9 @@
 cache/
 out/
 
+# Foundry dependencies (installed via forge install in CI)
+lib/
+
 # Ignores development broadcast logs
 !/broadcast
 /broadcast/*/31337/

@@ -16,17 +16,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    defaults:
+      run:
+        working-directory: contracts
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-          submodules: recursive
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Show Forge version
         run: forge --version
+
+      - name: Install dependencies
+        run: forge install
 
       - name: Run Forge fmt
         run: forge fmt --check
