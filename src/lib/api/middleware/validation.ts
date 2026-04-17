@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { z, ZodSchema } from "zod";
 import { validateBech32Address, sanitizeString as sanitizeStringUtil } from "../validation";
 
+type ValidationSuccess<T> = {
+  success: true;
+  data: T;
+};
+
+type ValidationFailure = {
+  success: false;
+  errors: Array<{
+    field: string;
+    message: string;
+    code: string;
+  }>;
+};
+
 /**
  * Validation middleware
  * Validates request body against Zod schema
@@ -59,6 +73,29 @@ export async function validationMiddleware(
       ),
     };
   }
+}
+
+export function validateRequest<TSchema extends ZodSchema>(
+  payload: unknown,
+  schema: TSchema,
+): ValidationSuccess<z.infer<TSchema>> | ValidationFailure {
+  const result = schema.safeParse(payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      errors: result.error.errors.map((err) => ({
+        field: err.path.join("."),
+        message: err.message,
+        code: err.code,
+      })),
+    };
+  }
+
+  return {
+    success: true,
+    data: result.data,
+  };
 }
 
 /**

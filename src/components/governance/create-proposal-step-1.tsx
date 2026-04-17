@@ -16,17 +16,16 @@ export function CreateProposalStep1() {
   return (
     <DaoShell activeNavItem="Proposals" activeSidebarItem="Governance">
       <div className="p-8 lg:p-12 max-w-7xl mx-auto flex flex-col gap-10">
-        
         {/* Header Section */}
         <section className="flex flex-col gap-6">
-           <div className="flex items-center gap-2">
-              <div className="flex bg-[#cafd00] p-1.5 rounded-lg">
-                 <LayoutGrid className="w-4 h-4 text-[#3a4a00]" />
+          <div className="flex items-center gap-2">
+              <div className="flex rounded-lg bg-[#cafd00] p-1.5">
+                 <LayoutGrid className="h-4 w-4 text-[#3a4a00]" />
               </div>
               <span className="text-[10px] font-bold text-[#cafd00] uppercase tracking-[2px]">Proposal Initiation</span>
-           </div>
+          </div>
 
-           <div className="flex flex-col lg:flex-row lg:items-end justify-between border-b border-[rgba(73,72,71,0.15)] pb-10 gap-8">
+          <div className="flex flex-col justify-between gap-8 border-b border-[rgba(73,72,71,0.15)] pb-10 lg:flex-row lg:items-end">
               <div className="flex flex-col gap-2">
                  <h1 className="font-['Plus_Jakarta_Sans'] text-5xl font-extrabold tracking-tight text-white leading-none">
                     New Governance <span className="text-[#cafd00]">Proposal</span>
@@ -42,8 +41,8 @@ export function CreateProposalStep1() {
                  <div className="w-12 h-full bg-[#1a1919] rounded-full" />
                  <div className="w-12 h-full bg-[#1a1919] rounded-full" />
               </div>
-           </section>
-        </div>
+          </div>
+        </section>
 
         {/* Form Container */}
         <div className="bg-[#131111] border border-[rgba(73,72,71,0.15)] rounded-2xl p-10 lg:p-12 flex flex-col gap-10 shadow-2xl relative overflow-hidden">

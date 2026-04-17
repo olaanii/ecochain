@@ -147,3 +147,5 @@ export function TopNavigation({ searchPlaceholder = "Search..." }: TopNavigation
     </header>
   );
 }
+
+export default Navigation;
