@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   authMiddleware,
+} from "@/lib/api/middleware/auth";
+import {
   validationMiddleware,
+} from "@/lib/api/middleware/validation";
+import {
   rateLimitMiddleware,
+} from "@/lib/api/middleware/rate-limit";
+import {
   withErrorHandling,
-  ApiErrors,
-} from "@/lib/api/middleware";
+} from "@/lib/api/middleware/error-handler";
 import { detectFraud, addToReviewQueue } from "@/lib/verification/fraud-detection";
 import { z } from "zod";
 

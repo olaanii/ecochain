@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { validateBech32Address } from "../validation";
 import { logError, logWarn } from "../logger";
+import { prisma } from "@/lib/prisma/client";
 
 export type AuthContext = {
   userId: string;
@@ -88,6 +89,43 @@ export async function optionalAuthMiddleware(
   } catch {
     return { auth: undefined };
   }
+}
+
+export async function requireAuth(
+  request: NextRequest,
+): Promise<{
+  id: string;
+  clerkId: string;
+  role: AuthContext["role"];
+} | null> {
+  const { auth: authContext, error } = await authMiddleware(request);
+
+  if (error || !authContext) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: authContext.clerkId },
+    select: {
+      id: true,
+      clerkId: true,
+      role: true,
+    },
+  });
+
+  if (!user) {
+    logWarn("Authenticated Clerk user is missing a database record", {
+      clerkId: authContext.clerkId,
+      path: request.nextUrl.pathname,
+    });
+    return null;
+  }
+
+  return {
+    id: user.id,
+    clerkId: user.clerkId,
+    role: (user.role as AuthContext["role"]) || "authenticated",
+  };
 }
 
 /**

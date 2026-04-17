@@ -18,7 +18,7 @@ const RejectSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { reviewId: string } }
+  { params }: { params: Promise<{ reviewId: string }> }
 ) {
   try {
     const { userId } = auth();
@@ -47,7 +47,7 @@ export async function POST(
     const body = await request.json();
     const { reason } = RejectSchema.parse(body);
 
-    const { reviewId } = params;
+    const { reviewId } = await params;
 
     // Get verification from review ID
     const verificationId = reviewId.replace('review-', '').split('-').slice(0, -1).join('-');

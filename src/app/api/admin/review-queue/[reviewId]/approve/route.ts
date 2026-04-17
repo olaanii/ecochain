@@ -13,7 +13,7 @@ import { redis } from '@/lib/redis/client';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { reviewId: string } }
+  { params }: { params: Promise<{ reviewId: string }> }
 ) {
   try {
     const { userId } = auth();
@@ -38,7 +38,7 @@ export async function POST(
       );
     }
 
-    const { reviewId } = params;
+    const { reviewId } = await params;
 
     // Get verification from review ID (extract verification ID from review ID)
     const verificationId = reviewId.replace('review-', '').split('-').slice(0, -1).join('-');

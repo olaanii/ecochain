@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logInfo, logWarn, logError } from "../logger";
 
+export const logger = {
+  info: logInfo,
+  warn: logWarn,
+  error: logError,
+};
+
 export type RequestLog = {
   requestId: string;
   timestamp: string;

@@ -10,7 +10,7 @@ export interface CardProps {
 }
 
 const variantStyles = {
-  default: "border-white/10 bg-white/6 shadow-[0_24px_80px_rgba(2,6,23,0.35)] backdrop-blur-xl",
+  default: "border-white/10 bg-white/[0.06] shadow-[0_24px_80px_rgba(2,6,23,0.35)] backdrop-blur-xl",
   elevated: "border-white/20 bg-white/10 shadow-[0_32px_96px_rgba(2,6,23,0.45)] backdrop-blur-2xl",
   outlined: "border-emerald-300/30 bg-transparent shadow-none",
   glass: "border-white/5 bg-gradient-to-br from-white/8 to-white/4 shadow-[0_24px_80px_rgba(2,6,23,0.35)] backdrop-blur-2xl"

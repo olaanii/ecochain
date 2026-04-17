@@ -1,0 +1,10 @@
+
+> ecochain@0.1.0 prebuild C:\Users\PC\Documents\ecochain
+> node scripts/patch-interwovenkit.cjs
+
+InterwovenKit bundle already patched or not installed.
+
+> ecochain@0.1.0 build C:\Users\PC\Documents\ecochain
+> next build --webpack
+
+ ELIFECYCLE  Command failed with exit code 3221225786.

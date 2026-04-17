@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useNavigation } from "@/contexts/navigation-context";
-import { TopNavBar } from "@/components/layout/top-nav-bar";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Filter, Sparkles } from "lucide-react";
+
+import { ProductShell } from "@/components/layout/product-shell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type Task = {
   id: string;
@@ -16,12 +20,13 @@ type Task = {
 
 type CategoryFilter = "all" | "Transport" | "Recycling" | "Energy" | "Community";
 
+const categories: CategoryFilter[] = ["all", "Transport", "Recycling", "Energy", "Community"];
+
 export default function DiscoverPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
-  const { goToVerification } = useNavigation();
 
   useEffect(() => {
     async function fetchTasks() {
@@ -31,6 +36,7 @@ export default function DiscoverPage() {
         if (!response.ok) {
           throw new Error("Failed to fetch tasks");
         }
+
         const data = await response.json();
         setTasks(data.tasks || []);
       } catch (err) {
@@ -40,134 +46,161 @@ export default function DiscoverPage() {
       }
     }
 
-    fetchTasks();
+    void fetchTasks();
   }, []);
 
-  const filteredTasks =
-    selectedCategory === "all"
-      ? tasks
-      : tasks.filter((task) => task.category === selectedCategory);
+  const filteredTasks = useMemo(
+    () =>
+      selectedCategory === "all"
+        ? tasks
+        : tasks.filter((task) => task.category === selectedCategory),
+    [selectedCategory, tasks],
+  );
 
-  const handleTaskClick = (taskId: string) => {
-    goToVerification(taskId);
-  };
-
-  const categories: CategoryFilter[] = ["all", "Transport", "Recycling", "Energy", "Community"];
+  const featuredTask = filteredTasks[0] ?? tasks[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <TopNavBar variant="app" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Discover Eco-Tasks</h1>
-          <p className="text-lg text-gray-600">
-            Explore available eco-tasks and start earning rewards for sustainable actions
-          </p>
-        </div>
-
-        {/* Category Filters */}
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-3">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-2 rounded-full font-medium transition-all ${
-                  selectedCategory === category
-                    ? "bg-green-600 text-white shadow-md"
-                    : "bg-white text-gray-700 border border-gray-300 hover:border-green-500 hover:text-green-600"
-                }`}
-              >
-                {category === "all" ? "All Tasks" : category}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
-            <p className="text-red-800">Error: {error}</p>
-          </div>
-        )}
-
-        {/* Task Cards Grid */}
-        {!loading && !error && (
-          <>
-            {filteredTasks.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-gray-500 text-lg">No tasks found for this category</p>
+    <ProductShell
+      title="Discover eco-actions"
+      subtitle="Browse verified missions, compare reward profiles, and route operators into the proof workflow."
+    >
+      <div className="space-y-8">
+        <section className="surface overflow-hidden rounded-[2rem] px-6 py-6 sm:px-8 sm:py-8">
+          <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-5">
+              <Badge>Mission discovery</Badge>
+              <div className="space-y-4">
+                <h2 className="max-w-3xl text-4xl font-semibold tracking-tight text-white md:text-5xl">
+                  Turn verified sustainability work into a pipeline operators can actually manage.
+                </h2>
+                <p className="max-w-2xl text-base leading-7 text-slate-300">
+                  Task discovery is no longer a generic card grid. Operators can scan category,
+                  proof requirements, reward yield, and verification readiness in one place before
+                  sending users into the submission flow.
+                </p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    onClick={() => handleTaskClick(task.id)}
-                    className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow cursor-pointer border border-gray-200 overflow-hidden group"
-                  >
-                    {/* Category Badge */}
-                    <div className="bg-gradient-to-r from-green-500 to-green-600 px-4 py-2">
-                      <span className="text-white text-sm font-semibold">{task.category}</span>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-white/10 bg-black/20 p-6">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-white">Featured mission</p>
+                <Sparkles className="text-emerald-300" size={18} />
+              </div>
+              {featuredTask ? (
+                <div className="mt-5 space-y-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="text-2xl font-semibold text-white">{featuredTask.name}</h3>
+                    <Badge>{featuredTask.category}</Badge>
+                  </div>
+                  <p className="text-sm leading-6 text-slate-400">{featuredTask.description}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
+                        Base reward
+                      </p>
+                      <p className="mt-3 text-xl font-semibold text-white">
+                        {featuredTask.baseReward} INITIA
+                      </p>
                     </div>
-
-                    {/* Card Content */}
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-green-600 transition-colors">
-                        {task.name}
-                      </h3>
-                      <p className="text-gray-600 mb-4 line-clamp-3">{task.description}</p>
-
-                      {/* Rewards Section */}
-                      <div className="flex items-center justify-between mb-4 pt-4 border-t border-gray-100">
-                        <div>
-                          <p className="text-sm text-gray-500">Base Reward</p>
-                          <p className="text-2xl font-bold text-green-600">{task.baseReward}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">Bonus</p>
-                          <p className="text-xl font-semibold text-orange-500">
-                            {task.bonusMultiplier}x
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Verification Hint */}
-                      <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                        <p className="text-xs text-gray-500 mb-1">Verification Hint</p>
-                        <p className="text-sm text-gray-700">{task.verificationHint}</p>
-                      </div>
-
-                      {/* Action Button */}
-                      <button className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors">
-                        Start Task
-                      </button>
+                    <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
+                        Yield multiplier
+                      </p>
+                      <p className="mt-3 text-xl font-semibold text-emerald-300">
+                        x{featuredTask.bonusMultiplier.toFixed(2)}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+                  <Link
+                    href={`/verification?taskId=${featuredTask.id}`}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-300"
+                  >
+                    Open verification flow
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-slate-400">Loading mission profile...</p>
+              )}
+            </div>
+          </div>
+        </section>
 
-        {/* Task Count */}
-        {!loading && !error && filteredTasks.length > 0 && (
-          <div className="mt-8 text-center">
-            <p className="text-gray-600">
-              Showing {filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
-              {selectedCategory !== "all" && ` in ${selectedCategory}`}
-            </p>
+        <section className="flex flex-wrap items-center gap-3">
+          <div className="mr-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+            <Filter size={15} />
+            Filter by category
+          </div>
+          {categories.map((category) => (
+            <button
+              key={category}
+              type="button"
+              onClick={() => setSelectedCategory(category)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                selectedCategory === category
+                  ? "bg-emerald-300 text-slate-950"
+                  : "border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {category === "all" ? "All missions" : category}
+            </button>
+          ))}
+        </section>
+
+        {loading && (
+          <div className="flex justify-center py-16">
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-emerald-300/20 border-t-emerald-300" />
           </div>
         )}
+
+        {error && (
+          <div className="rounded-[1.75rem] border border-red-400/20 bg-red-400/10 px-5 py-4 text-sm text-red-100">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <section className="grid gap-5 xl:grid-cols-2">
+            {filteredTasks.map((task) => (
+              <article
+                key={task.id}
+                className="rounded-[1.75rem] border border-white/10 bg-white/[0.06] p-6 shadow-[0_24px_80px_rgba(2,6,23,0.28)]"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h3 className="text-2xl font-semibold text-white">{task.name}</h3>
+                      <Badge>{task.category}</Badge>
+                    </div>
+                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+                      {task.description}
+                    </p>
+                  </div>
+                  <div className="rounded-[1.25rem] border border-emerald-300/20 bg-emerald-300/8 px-4 py-3 text-right">
+                    <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                      Reward
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-white">{task.baseReward}</p>
+                    <p className="text-sm text-emerald-300">x{task.bonusMultiplier.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-white/8 pt-5">
+                  <p className="max-w-xl text-xs uppercase tracking-[0.28em] text-emerald-300">
+                    {task.verificationHint}
+                  </p>
+                  <Link href={`/verification?taskId=${task.id}`}>
+                    <Button size="sm">
+                      Start verification
+                      <ArrowRight size={15} />
+                    </Button>
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
       </div>
-    </div>
+    </ProductShell>
   );
 }
