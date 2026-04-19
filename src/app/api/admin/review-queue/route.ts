@@ -11,7 +11,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma/client';
-import { redis } from '@/lib/redis/client';
 
 /**
  * GET /api/admin/review-queue
@@ -19,7 +18,7 @@ import { redis } from '@/lib/redis/client';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json(
@@ -84,7 +83,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: flaggedVerifications.map((v) => ({
+      data: flaggedVerifications.map((v: typeof flaggedVerifications[number]) => ({
         id: v.id,
         userId: v.userId,
         userName: v.user.displayName,

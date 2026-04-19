@@ -50,6 +50,12 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  // Capture the previous role so we can roll back on Clerk failure.
+  const previous = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { role: true },
+  });
+
   const user = await prisma.user.update({
     where: { clerkId: userId },
     data: { role },
@@ -63,6 +69,17 @@ export async function PATCH(req: NextRequest) {
     });
   } catch (err) {
     console.error("[/api/me] Failed to sync role to Clerk metadata:", err);
+    // Roll the DB back so server layouts (which read Clerk metadata) and the
+    // DB stay in sync. Clients should retry.
+    if (previous) {
+      await prisma.user
+        .update({ where: { clerkId: userId }, data: { role: previous.role } })
+        .catch(() => undefined);
+    }
+    return NextResponse.json(
+      { error: "Role sync failed. Please retry." },
+      { status: 502 },
+    );
   }
 
   return NextResponse.json({ id: user.id, role: user.role });

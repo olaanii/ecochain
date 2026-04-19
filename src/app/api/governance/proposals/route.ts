@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { publishEvent } from "@/lib/realtime/pubsub";
+import { getCurrentDbUser } from "@/lib/auth/current-user";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,6 @@ const ListQuerySchema = z.object({
 const CreateSchema = z.object({
   title: z.string().min(6).max(200),
   description: z.string().min(20).max(5000),
-  proposer: z.string().min(3),
   quorum: z.number().int().min(1),
   durationDays: z.number().int().min(1).max(30).default(7),
 });
@@ -78,6 +78,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const caller = await getCurrentDbUser();
+    if (!caller) return NextResponse.json({ success: false, error: "unauthorized" }, { status: 401 });
+
     const body = CreateSchema.parse(await request.json());
     const now = new Date();
     const endTime = new Date(now.getTime() + body.durationDays * 24 * 60 * 60 * 1000);
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
       data: {
         title: body.title,
         description: body.description,
-        proposer: body.proposer,
+        proposer: caller.id,
         status: "active",
         votesFor: 0,
         votesAgainst: 0,

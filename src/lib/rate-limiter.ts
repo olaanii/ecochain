@@ -2,10 +2,33 @@ class RateLimiter {
   private requests: Map<string, number[]> = new Map();
   private maxRequests: number;
   private windowMs: number;
+  private sweepTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(maxRequests: number = 10, windowMs: number = 60000) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
+
+    // Periodically prune identifiers whose timestamps have all expired so the
+    // Map doesn't grow unbounded on long-running servers. Uses `unref()` so
+    // it won't keep the event loop alive in short-lived processes.
+    if (typeof setInterval === "function") {
+      const interval = Math.min(Math.max(this.windowMs, 30_000), 5 * 60_000);
+      this.sweepTimer = setInterval(() => this.sweep(), interval);
+      const timer = this.sweepTimer as unknown as { unref?: () => void };
+      if (typeof timer?.unref === "function") timer.unref();
+    }
+  }
+
+  private sweep(): void {
+    const now = Date.now();
+    for (const [id, timestamps] of this.requests) {
+      const valid = timestamps.filter((t) => now - t < this.windowMs);
+      if (valid.length === 0) {
+        this.requests.delete(id);
+      } else if (valid.length !== timestamps.length) {
+        this.requests.set(id, valid);
+      }
+    }
   }
 
   canMakeRequest(identifier: string): boolean {
@@ -39,8 +62,11 @@ class RateLimiter {
   }
 
   getResetTime(identifier: string): number {
-    const timestamps = this.requests.get(identifier);
-    if (!timestamps || timestamps.length === 0) {
+    const now = Date.now();
+    const timestamps = (this.requests.get(identifier) || []).filter(
+      (t) => now - t < this.windowMs,
+    );
+    if (timestamps.length === 0) {
       return 0;
     }
 

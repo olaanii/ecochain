@@ -12,13 +12,22 @@ import webpush from "web-push";
 import { prisma } from "@/lib/prisma/client";
 
 let configured = false;
+let warnedMissing = false;
 
 function configure() {
   if (configured) return true;
   const publicKey = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   const subject = process.env.VAPID_SUBJECT || "mailto:noreply@ecochain.local";
-  if (!publicKey || !privateKey) return false;
+  if (!publicKey || !privateKey) {
+    if (!warnedMissing) {
+      warnedMissing = true;
+      console.warn(
+        "[push] VAPID keys missing (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY). Push notifications will be dropped.",
+      );
+    }
+    return false;
+  }
   webpush.setVapidDetails(subject, publicKey, privateKey);
   configured = true;
   return true;

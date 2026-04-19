@@ -25,17 +25,27 @@ export default function OnboardingPage() {
   };
   const currentStep = stepIndex[step];
 
+  const [error, setError] = useState<string | null>(null);
+
   async function handleBegin() {
     if (!selectedRole) return;
     setSaving(true);
+    setError(null);
     try {
-      await fetch("/api/me", {
+      const res = await fetch("/api/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: selectedRole }),
       });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        setError(data?.error ?? "Failed to set up your account. Please try again.");
+        setSaving(false);
+        return;
+      }
       router.push(selectedRole === "sponsor" ? "/sponsor" : "/dashboard");
     } catch {
+      setError("Network error. Please try again.");
       setSaving(false);
     }
   }
@@ -169,6 +179,11 @@ export default function OnboardingPage() {
                   : "Your eco journey starts now. Discover tasks and earn ECO."}
               </p>
             </div>
+            {error && (
+              <p className="w-full text-center text-sm text-red-600" role="alert">
+                {error}
+              </p>
+            )}
             <button
               type="button"
               disabled={saving}

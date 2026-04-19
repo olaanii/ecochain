@@ -6,13 +6,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
+import { getCurrentDbUser } from "@/lib/auth/current-user";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const SubscribeSchema = z.object({
-  userId: z.string().optional(),
   endpoint: z.string().url(),
   keys: z.object({
     p256dh: z.string().min(1),
@@ -28,6 +28,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentDbUser();
+    if (!user) return NextResponse.json({ success: false, error: "unauthorized" }, { status: 401 });
+
     const body = SubscribeSchema.parse(await request.json());
     const sub = await (prisma as any).pushSubscription.upsert({
       where: { endpoint: body.endpoint },
@@ -35,13 +38,13 @@ export async function POST(request: NextRequest) {
         endpoint: body.endpoint,
         p256dh: body.keys.p256dh,
         auth: body.keys.auth,
-        userId: body.userId,
+        userId: user.id,
         userAgent: body.userAgent,
       },
       update: {
         p256dh: body.keys.p256dh,
         auth: body.keys.auth,
-        userId: body.userId ?? undefined,
+        userId: user.id,
         userAgent: body.userAgent,
       },
     });
@@ -57,9 +60,20 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { endpoint } = (await request.json()) as { endpoint?: string };
+    const user = await getCurrentDbUser();
+    if (!user) return NextResponse.json({ success: false, error: "unauthorized" }, { status: 401 });
+
+    let endpoint: string | undefined;
+    try {
+      const body = (await request.json()) as { endpoint?: string };
+      endpoint = body.endpoint;
+    } catch {
+      return NextResponse.json({ success: false, error: "invalid_body" }, { status: 400 });
+    }
     if (!endpoint) return NextResponse.json({ success: false, error: "endpoint_required" }, { status: 400 });
-    await (prisma as any).pushSubscription.deleteMany({ where: { endpoint } });
+
+    // Only delete subscriptions the caller actually owns.
+    await (prisma as any).pushSubscription.deleteMany({ where: { endpoint, userId: user.id } });
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[push] unsubscribe error", err);

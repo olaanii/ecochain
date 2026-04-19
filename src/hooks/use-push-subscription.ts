@@ -13,7 +13,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return out;
 }
 
-export function usePushSubscription(userId?: string) {
+export function usePushSubscription(_userId?: string) {
   const [permission, setPermission] = useState<PermissionState>("default");
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -63,7 +63,6 @@ export function usePushSubscription(userId?: string) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
           endpoint: json.endpoint,
           keys: json.keys,
           userAgent: navigator.userAgent,
@@ -75,7 +74,7 @@ export function usePushSubscription(userId?: string) {
     } finally {
       setBusy(false);
     }
-  }, [userId]);
+  }, []);
 
   const unsubscribe = useCallback(async () => {
     setBusy(true);

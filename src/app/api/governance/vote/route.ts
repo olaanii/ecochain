@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { publishEvent } from "@/lib/realtime/pubsub";
+import { getCurrentDbUser } from "@/lib/auth/current-user";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -15,23 +16,25 @@ export const runtime = "nodejs";
 
 const Schema = z.object({
   proposalId: z.string().min(1),
-  userId: z.string().min(1),
   support: z.enum(["for", "against", "abstain"]),
   reason: z.string().max(500).optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
+    const caller = await getCurrentDbUser();
+    if (!caller) return NextResponse.json({ success: false, error: "unauthorized" }, { status: 401 });
+
     const body = Schema.parse(await request.json());
 
     const [user, proposal, existing] = await Promise.all([
       prisma.user.findUnique({
-        where: { id: body.userId },
+        where: { id: caller.id },
         include: { stakes: { where: { status: "active" } } },
       }),
       prisma.daoProposal.findUnique({ where: { id: body.proposalId } }),
       prisma.vote.findUnique({
-        where: { userId_proposalId: { userId: body.userId, proposalId: body.proposalId } },
+        where: { userId_proposalId: { userId: caller.id, proposalId: body.proposalId } },
       }),
     ]);
 
@@ -47,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     const vote = await prisma.vote.create({
       data: {
-        userId: body.userId,
+        userId: caller.id,
         proposalId: body.proposalId,
         support: body.support,
         reason: body.reason,

@@ -9,10 +9,11 @@ import { useServerEvents } from "@/hooks/use-server-events";
 interface MetricsResponse {
   totals: {
     co2OffsetKg: number;
-    activeUsers: number;
+    totalUsers: number;
+    activeUsers30d: number;
     verificationsThisMonth: number;
     treasuryBalance: number;
-    activeProjects: number;
+    activeTasks: number;
   };
   trends: {
     co2Offset: SeriesPoint[];
@@ -117,7 +118,7 @@ export function AnalyticsDashboard() {
         <MetricCard
           className="surface-secondary"
           label="COMMUNITY"
-          value={loading ? "—" : formatNumber(data?.totals.activeUsers ?? 0)}
+          value={loading ? "—" : formatNumber(data?.totals.activeUsers30d ?? 0)}
           unit="members"
         >
           <div className="pt-6">

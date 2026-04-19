@@ -41,25 +41,24 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   addNotification: (notification) => {
     const newNotification: Notification = {
       ...notification,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
       timestamp: new Date(),
     };
 
-    set((state) => {
-      const notifications = [newNotification, ...state.notifications].slice(
+    set((state) => ({
+      notifications: [newNotification, ...state.notifications].slice(
         0,
-        state.maxNotifications
-      );
+        state.maxNotifications,
+      ),
+    }));
 
-      // Auto-remove after duration if specified
-      if (notification.duration && notification.duration > 0) {
-        setTimeout(() => {
-          get().removeNotification(newNotification.id);
-        }, notification.duration);
-      }
-
-      return { notifications };
-    });
+    // Auto-remove after duration if specified. Scheduled outside `set` so the
+    // reducer stays pure and StrictMode double-invocation doesn't stack timers.
+    if (notification.duration && notification.duration > 0) {
+      setTimeout(() => {
+        get().removeNotification(newNotification.id);
+      }, notification.duration);
+    }
   },
   removeNotification: (id) =>
     set((state) => ({

@@ -5,18 +5,28 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
+import { getCurrentDbUser } from "@/lib/auth/current-user";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, id } = (await request.json()) as { userId?: string; id?: string };
-    if (!userId) return NextResponse.json({ success: false, error: "userId_required" }, { status: 400 });
+    const user = await getCurrentDbUser();
+    if (!user) return NextResponse.json({ success: false, error: "unauthorized" }, { status: 401 });
+
+    let id: string | undefined;
+    try {
+      const body = (await request.json()) as { id?: string };
+      id = body.id;
+    } catch {
+      // Empty body is fine: treat as "mark all unread as read"
+    }
+
     if (id) {
-      await prisma.notification.updateMany({ where: { id, userId }, data: { read: true } });
+      await prisma.notification.updateMany({ where: { id, userId: user.id }, data: { read: true } });
     } else {
-      await prisma.notification.updateMany({ where: { userId, read: false }, data: { read: true } });
+      await prisma.notification.updateMany({ where: { userId: user.id, read: false }, data: { read: true } });
     }
     return NextResponse.json({ success: true });
   } catch (err) {

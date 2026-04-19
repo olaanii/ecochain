@@ -17,10 +17,14 @@ const CACHE_TTL_SECONDS = 30;
 interface MetricsResponse {
   totals: {
     co2OffsetKg: number;
-    activeUsers: number;
+    /** Total registered users across all time. */
+    totalUsers: number;
+    /** Distinct users with a verified submission in the last 30 days. */
+    activeUsers30d: number;
     verificationsThisMonth: number;
     treasuryBalance: number;
-    activeProjects: number;
+    /** Tasks currently marked `active: true`. */
+    activeTasks: number;
   };
   trends: {
     co2Offset: { label: string; value: number }[]; // last 30 days cumulative
@@ -40,13 +44,14 @@ async function computeMetrics(): Promise<MetricsResponse> {
 
   const [
     verifiedAgg,
-    activeUsers,
+    totalUsers,
     verificationsThisMonth,
     treasuryAgg,
-    activeProjects,
+    activeTasks,
     recentVerifications,
     recentUsers,
     categoryGroup,
+    activeUsers30dGroup,
   ] = await Promise.all([
     prisma.verification.aggregate({
       where: { status: "verified" },
@@ -77,7 +82,13 @@ async function computeMetrics(): Promise<MetricsResponse> {
       where: { status: "verified", verifiedAt: { gte: thirtyDaysAgo } },
       _count: true,
     }),
+    prisma.verification.groupBy({
+      by: ["userId"],
+      where: { status: "verified", verifiedAt: { gte: thirtyDaysAgo } },
+      _count: true,
+    }),
   ]);
+  const activeUsers30d = activeUsers30dGroup.length;
 
   type VerificationRow = { verifiedAt: Date; reward: number; task: { category: string } | null };
   type UserRow = { createdAt: Date };
@@ -99,7 +110,7 @@ async function computeMetrics(): Promise<MetricsResponse> {
 
   // User growth per week
   const userGrowth: { label: string; value: number }[] = [];
-  let running = Math.max(0, activeUsers - userRows.length);
+  let running = Math.max(0, totalUsers - userRows.length);
   for (let w = 11; w >= 0; w--) {
     const wkStart = new Date(now.getTime() - (w + 1) * 7 * 24 * 60 * 60 * 1000);
     const wkEnd = new Date(now.getTime() - w * 7 * 24 * 60 * 60 * 1000);
@@ -132,10 +143,11 @@ async function computeMetrics(): Promise<MetricsResponse> {
   return {
     totals: {
       co2OffsetKg: verifiedAgg._sum.reward ?? 0,
-      activeUsers,
+      totalUsers,
+      activeUsers30d,
       verificationsThisMonth,
       treasuryBalance: treasuryAgg._sum.amount ?? 0,
-      activeProjects,
+      activeTasks,
     },
     trends: {
       co2Offset,

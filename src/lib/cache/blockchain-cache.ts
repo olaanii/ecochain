@@ -90,10 +90,22 @@ export async function getOrFetch<T>(
 export async function invalidateCache(pattern: string): Promise<void> {
   try {
     const cachePattern = getCacheKey(pattern);
-    const keys = await redis.keys(cachePattern);
-    
-    if (keys.length > 0) {
-      await redis.del(...keys);
+    // SCAN is non-blocking on the Redis server, unlike KEYS.
+    const stream = (redis as unknown as {
+      scanStream: (opts: { match: string; count: number }) => AsyncIterable<string[]>;
+    }).scanStream({ match: cachePattern, count: 500 });
+
+    const batch: string[] = [];
+    for await (const keys of stream) {
+      for (const k of keys) {
+        batch.push(k);
+        if (batch.length >= 500) {
+          await redis.del(...batch.splice(0, batch.length));
+        }
+      }
+    }
+    if (batch.length > 0) {
+      await redis.del(...batch);
     }
   } catch (error) {
     console.error("[BlockchainCache] Error invalidating cache:", error);

@@ -21,7 +21,7 @@ export async function POST(
   { params }: { params: Promise<{ reviewId: string }> }
 ) {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json(
@@ -49,8 +49,25 @@ export async function POST(
 
     const { reviewId } = await params;
 
-    // Get verification from review ID
-    const verificationId = reviewId.replace('review-', '').split('-').slice(0, -1).join('-');
+    // Look up the review queue entry from Redis to get the real verification ID
+    const reviewRaw = await redis.get(`review-queue:${reviewId}`);
+    if (!reviewRaw) {
+      return NextResponse.json(
+        { success: false, error: 'Review item not found or expired' },
+        { status: 404 }
+      );
+    }
+    let verificationId: string;
+    try {
+      const parsed = JSON.parse(reviewRaw) as { verificationId?: string };
+      if (!parsed.verificationId) throw new Error('missing_verificationId');
+      verificationId = parsed.verificationId;
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Malformed review item' },
+        { status: 500 }
+      );
+    }
 
     // Update verification status
     const verification = await prisma.verification.update({
@@ -80,9 +97,10 @@ export async function POST(
       },
     });
 
-    // Set cooldown for this task
+    // Set cooldown for this task and drop the review entry from the queue
     const cooldownKey = `cooldown:${verification.userId}:${verification.taskId}`;
     await redis.setex(cooldownKey, 24 * 60 * 60, '1'); // 24 hour cooldown
+    await redis.del(`review-queue:${reviewId}`);
 
     return NextResponse.json({
       success: true,

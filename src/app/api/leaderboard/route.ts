@@ -144,21 +144,27 @@ async function loadLeaderboard(params: z.infer<typeof QuerySchema>): Promise<Lea
   })) as UserLite[];
   const byId = new Map<string, UserLite>(users.map((u: UserLite) => [u.id, u]));
 
-  return grouped
-    .map((g: GroupAgg, i: number) => {
+  const ordered = grouped
+    .map((g: GroupAgg) => {
       const u = byId.get(g.userId);
       if (!u) return null;
       return {
-        rank: skip + i + 1,
-        userId: u.id,
-        name: u.displayName || u.username || u.id.slice(0, 6),
+        user: u,
         score: g._sum.reward ?? 0,
-        level: u.level,
-        streakDays: u.streakDays,
-        region: u.region,
-      } satisfies LeaderRow;
+      };
     })
-    .filter((r: LeaderRow | null): r is LeaderRow => !!r);
+    .filter((r): r is { user: UserLite; score: number } => !!r);
+
+  // Renumber after the region filter so ranks are dense (no gaps).
+  return ordered.map((row, i) => ({
+    rank: skip + i + 1,
+    userId: row.user.id,
+    name: row.user.displayName || row.user.username || row.user.id.slice(0, 6),
+    score: row.score,
+    level: row.user.level,
+    streakDays: row.user.streakDays,
+    region: row.user.region,
+  }));
 }
 
 async function resolveUserRank(params: z.infer<typeof QuerySchema>): Promise<LeaderRow | null> {
