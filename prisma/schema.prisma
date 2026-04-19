@@ -20,7 +20,7 @@ model User {
   badges          Json            @default("[]")
   lastTaskAt      DateTime?       // For streak tracking
   preferences     Json?           // Notification preferences, language, etc.
-  role            String          @default("user") // user, admin, owner
+  role            String          @default("user") // user, sponsor, admin, owner
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   verifications   Verification[]
@@ -243,6 +243,19 @@ model Vote {
   @@index([userId])
   @@index([proposalId])
   @@index([votedAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String?
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model ProposalExecution {

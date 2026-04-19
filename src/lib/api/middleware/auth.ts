@@ -8,7 +8,7 @@ export type AuthContext = {
   userId: string;
   clerkId: string;
   walletAddress?: string;
-  role: "public" | "authenticated" | "admin" | "owner";
+  role: "public" | "authenticated" | "admin" | "owner" | "sponsor";
 };
 
 export type AuthenticatedRequest = NextRequest & {

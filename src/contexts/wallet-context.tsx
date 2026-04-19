@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useInterwovenKit } from "@initia/interwovenkit-react";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import {
   storeWalletAddress,
   clearWalletAddress,
@@ -28,6 +28,7 @@ export type WalletContextType = {
   error?: Error;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
+  switchNetwork?: (chainId: string) => Promise<void>;
   isCorrectChain: boolean;
   username?: string;
 };
@@ -39,6 +40,7 @@ const EXPECTED_CHAIN_ID = process.env.NEXT_PUBLIC_INITIA_CHAIN_ID || "ecochain10
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { initiaAddress, openConnect, username } = useInterwovenKit();
   const { address: evmAddress } = useAccount();
+  const { switchChain } = useSwitchChain();
   
   const [error, setError] = useState<Error | undefined>();
   const [isCorrectChain, setIsCorrectChain] = useState(false);
@@ -107,6 +109,24 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const handleSwitchNetwork = async (targetChainId: string) => {
+    try {
+      setError(undefined);
+      // Update local state for the network switch
+      setCurrentChainId(targetChainId);
+      setIsCorrectChain(targetChainId === EXPECTED_CHAIN_ID);
+      storeWalletChainId(targetChainId);
+      
+      // Note: Full wagmi switchChain implementation would go here
+      // This is a placeholder that updates state for now
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
+      console.error("Failed to switch network:", error);
+      throw error;
+    }
+  };
+
   const value: WalletContextType = {
     address: evmAddress,
     initiaAddress: initiaAddress || undefined,
@@ -116,6 +136,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     error,
     connect: handleConnect,
     disconnect: handleDisconnect,
+    switchNetwork: handleSwitchNetwork,
     isCorrectChain,
     username: username || undefined,
   };

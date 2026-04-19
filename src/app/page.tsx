@@ -1,530 +1,230 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Coins,
-  Leaf,
-  ShieldCheck,
-  Sparkles,
-  Wallet,
-} from "lucide-react";
-import {
-  SignInButton,
-  UserButton,
-  useUser,
-} from "@clerk/nextjs";
-import { useQuery } from "@tanstack/react-query";
-import { useInterwovenKit } from "@initia/interwovenkit-react";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Leaf, ShieldCheck, Coins, ArrowRight, Users, TrendingUp, Zap, CheckCircle2 } from "lucide-react";
 import { TopNavBar } from "@/components/layout/top-nav-bar";
-import { useWallet } from "@/contexts/wallet-context";
-import { fallbackDashboard, type EcoDataResponse } from "@/lib/dashboard-data";
-import { initiaSubmission } from "@/lib/initia/submission";
-import { hasClerkSetup, hasWalletDemoSetup } from "@/lib/runtime-config";
-import { useEcoContracts } from "@/hooks/use-eco-contracts";
-import { useState } from "react";
-
-
-const fetchEcoData = async () =>
-  fetch("/api/tasks").then((response) => response.json() as Promise<EcoDataResponse>);
+import { WalletConnectModal } from "@/components/wallet-connect-modal";
+import { useState, useEffect } from "react";
 
 export default function Home() {
-  const { ecoBalance, submitProof, isSubmitting } = useEcoContracts();
-  const [lastSubmissionTx, setLastSubmissionTx] = useState<string | null>(null);
-
-  const handleVerifyFeatured = async () => {
-    try {
-      // Mock proof submission for the featured task
-      const taskId = "low_impact_commute";
-      const mockProofHash = `proof_${Date.now()}`;
-      const timestamp = Math.floor(Date.now() / 1000);
-      
-      submitProof(taskId, mockProofHash, timestamp);
-      setLastSubmissionTx("Transaction initiated...");
-    } catch (e) {
-      console.error("Verification failed", e);
-    }
-  };
-
-  const { data } = useQuery({
-    queryKey: ["landingData"],
-    queryFn: fetchEcoData,
-    staleTime: 1000 * 60,
-    initialData: fallbackDashboard,
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [protocolStats, setProtocolStats] = useState({
+    totalActions: 0,
+    totalRewards: 0,
+    activeUsers: 0,
+    tvl: 0,
   });
 
-  const dashboard = data ?? fallbackDashboard;
-  const featuredTask = dashboard.tasks[0];
-  const proofFeed = dashboard.bridgeHistory.slice(0, 3);
-  const stats = [
-    {
-      label: "Total ECO impact",
-      value: dashboard.analytics[0]?.value ?? "1.2M+ actions",
-      detail: dashboard.analytics[0]?.trend ?? "Live mission growth",
-    },
-    {
-      label: "Active verifiers",
-      value: (dashboard.leaderboard.length * 10725).toLocaleString(),
-      detail: "Across transit, recycling, energy, and community pilots",
-    },
-    {
-      label: "Rewards retained",
-      value: dashboard.economics.minted,
-      detail: "Revenue stays inside the appchain economy",
-    },
-  ];
+  // Fetch live protocol stats from API
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/stats/protocol');
+        if (response.ok) {
+          const data = await response.json();
+          setProtocolStats(data);
+        } else {
+          // Fallback to zero values if API fails
+          setProtocolStats({
+            totalActions: 0,
+            totalRewards: 0,
+            activeUsers: 0,
+            tvl: 0,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch protocol stats:', error);
+        setProtocolStats({
+          totalActions: 0,
+          totalRewards: 0,
+          activeUsers: 0,
+          tvl: 0,
+        });
+      }
+    };
+    fetchStats();
+  }, []);
 
   return (
-    <main className="landing-shell">
-      <div className="landing-backdrop" />
-      <TopNavBar variant="landing" brandName="EcoLoop" />
+    <div className="relative min-h-screen bg-[var(--color-surface)]">
+      <TopNavBar variant="landing" />
 
-      <section
-        id="discover"
-        className="landing-section relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-5 pb-20 pt-32 lg:px-8"
-      >
-        <div className="landing-grid">
-          <div className="max-w-3xl space-y-7">
-            <Badge className="landing-pill">
-              Live on Initia - Auto-sign - Bridge enabled
-            </Badge>
-            <div className="space-y-5">
-              <h1 className="landing-headline text-balance">
-                Verified climate action with an appchain that keeps the upside.
-              </h1>
-              <p className="max-w-2xl text-lg leading-8 text-slate-300">
-                EcoLoop turns real-world sustainability work into on-chain proof, instant rewards,
-                and community-owned governance. Builders get Initia’s fast block times, bridge
-                flows, and wallet UX while users earn for transit, recycling, and restoration.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-4">
-              {hasWalletDemoSetup ? <LandingWalletActions /> : <LandingWalletFallback />}
+      {/* ── Main Canvas ──────────────────────────── */}
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-32 px-6 lg:px-24 pt-16">
+        {/* ── Hero Section ───────────────────────── */}
+        <section className="relative flex min-h-[600px] lg:min-h-[870px] flex-col justify-center pb-24 lg:pb-72 pt-32 lg:pt-64">
+          {/* Decorative accent — right side */}
+          <div className="absolute right-[-96px] top-16 hidden h-[400px] lg:h-[614px] w-[300px] lg:w-[427px] items-center justify-center overflow-hidden rounded-bl-3xl rounded-tl-3xl bg-[var(--color-secondary-alt)] opacity-80 lg:flex">
+            <div className="green-blur-accent inset-0" />
+          </div>
+
+          {/* Hero text content */}
+          <div className="relative max-w-[896px]">
+            <h1 className="heading-display text-[var(--color-text-dark)]">
+              Impact, Refined.
+            </h1>
+
+            <p className="text-body-lg mt-8 max-w-[718px]">
+              Transform real-world actions into verified rewards on the Initia network.
+            </p>
+
+            <div className="flex flex-wrap gap-4 mt-10">
+              <button
+                onClick={() => setIsWalletModalOpen(true)}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                Connect Wallet
+                <ArrowRight className="h-4 w-4" />
+              </button>
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="btn-outline inline-flex"
               >
-                Open demo dashboard
-                <ArrowRight size={16} />
+                Explore Dashboard
               </Link>
             </div>
-            <div className="flex flex-wrap gap-3">
-              {dashboard.mission.slice(0, 4).map((item) => (
-                <Badge key={item}>{item}</Badge>
-              ))}
-            </div>
           </div>
+        </section>
 
-          <div className="landing-planet-card">
-            <div className="landing-planet-glow" />
-            <div className="relative z-10 space-y-5">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-lime-200">
-                  Chain status
-                </p>
-                <span className="rounded-full border border-lime-300/25 bg-lime-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-lime-100">
-                  {dashboard.chainStatus.status}
-                </span>
-              </div>
-              <div>
-                <p className="text-4xl font-black tracking-tight text-white">
-                  {dashboard.chainStatus.chainId}
-                </p>
-                <p className="mt-2 text-sm text-slate-300">
-                  100ms block time, wallet sessions, and native bridging give EcoLoop a full-stack
-                  product feel without exposing users to infra complexity.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <MetricChip
-                  label="Block time"
-                  value={dashboard.chainStatus.blockTime}
-                />
-                <MetricChip
-                  label="Auto-sign"
-                  value={dashboard.chainStatus.autoSign}
-                />
-                <MetricChip
-                  label="Bridge requests"
-                  value={dashboard.economics.bridgeRequests}
-                />
-                <MetricChip
-                  label="Rebate pool"
-                  value={dashboard.economics.rebatePool}
-                />
-              </div>
-              <a
-                href={dashboard.chainStatus.txnEvidence}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-lime-200 underline decoration-lime-200/60 underline-offset-4"
-              >
-                View live transaction evidence
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-section border-y border-white/8 bg-black/20 px-5 py-10 lg:px-8">
-        <div className="mx-auto grid w-full max-w-7xl gap-5 md:grid-cols-3">
-          {stats.map((stat) => (
-            <div key={stat.label} className="landing-stat-card">
-              <p className="text-xs uppercase tracking-[0.35em] text-slate-400">{stat.label}</p>
-              <p className="mt-3 text-4xl font-black tracking-tight text-white">{stat.value}</p>
-              <p className="mt-3 text-sm text-lime-200">{stat.detail}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="verify" className="landing-section px-5 py-24 lg:px-8">
-        <div className="mx-auto w-full max-w-7xl">
-          <div className="mx-auto mb-16 max-w-3xl text-center">
-            <p className="landing-kicker">Proof of restoration</p>
-            <h2 className="landing-title">Connect, verify, earn</h2>
-            <p className="mt-4 text-base leading-7 text-slate-300">
-              EcoLoop compresses the full sustainability loop into a product judges can grasp in
-              seconds: connect a wallet, submit proof, mint rewards, and keep the value inside the
-              Initia economy.
-            </p>
-          </div>
-          <div className="grid gap-8 md:grid-cols-3">
-            <FlowCard
-              icon={<Wallet size={30} />}
-              title="Connect"
-              description="Use InterwovenKit for wallet sessions, Auto-sign, and native Initia onboarding."
+        {/* ── Process Section (Act / Verify / Earn) ─ */}
+        <section className="grid grid-cols-1 gap-8 lg:gap-16 pb-12 lg:pb-24 md:grid-cols-3">
+          {/* Step 1: Act */}
+          <div className="pt-0">
+            <ProcessStep
+              icon={<Leaf className="h-6 w-6 text-[var(--color-primary)]" />}
+              title="Act"
+              description="Engage in verifiable ecological actions within your local environment."
             />
-            <FlowCard
-              icon={<ShieldCheck size={30} />}
+          </div>
+
+          {/* Step 2: Verify — offset down */}
+          <div className="pt-0 md:pt-16">
+            <ProcessStep
+              icon={<ShieldCheck className="h-6 w-6 text-[var(--color-primary)]" />}
               title="Verify"
-              description="Submit sensor, transit, image, or weight evidence through verifiable proof routes."
+              description="Our decentralized oracle network cryptographically proves your contribution."
             />
-            <FlowCard
-              icon={<Coins size={30} />}
+          </div>
+
+          {/* Step 3: Earn — offset further */}
+          <div className="pt-0 md:pt-32">
+            <ProcessStep
+              icon={<Coins className="h-6 w-6 text-[var(--color-primary)]" />}
               title="Earn"
-              description="Mint rewards on the appchain and redeem them across missions, rebates, and local partners."
+              description="Receive protocol-native rewards directly to your sovereign wallet."
             />
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="stake" className="landing-section bg-black/20 px-5 py-24 lg:px-8">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <p className="landing-kicker">Utility layer</p>
-              <h2 className="landing-title">A token economy built for climate coordination</h2>
-              <p className="mt-4 text-base leading-7 text-slate-300">
-                Rewards, staking, governance, and redemptions all reinforce the same loop: verify
-                impact, route value through the chain, and give the community a reason to keep
-                contributing.
-              </p>
-            </div>
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-lime-200 transition hover:text-white"
-            >
-              Explore the live dashboard
-              <ArrowRight size={16} />
-            </Link>
-          </div>
-
-          <div className="landing-bento-grid">
-            <article className="landing-feature-card lg:col-span-2 lg:row-span-2">
-              <div className="landing-feature-overlay" />
-              <div className="relative z-10 max-w-xl space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  <Badge className="border-lime-300/30 bg-lime-300/10 text-lime-100">
-                    Featured mission
-                  </Badge>
-                  <Badge className="border-white/15 bg-black/20 text-white">High yield</Badge>
-                </div>
-                <h3 className="text-3xl font-black tracking-tight text-white">
-                  {featuredTask?.name ?? "Amazon Basin Sensor Array"}
-                </h3>
-                <p className="text-base leading-7 text-slate-200">
-                  {featuredTask?.description ??
-                    "Verify carbon and biodiversity progress with multi-source field data."}
-                </p>
-                <p className="text-sm text-lime-200">
-                  {featuredTask?.verificationHint ??
-                    "Oracle-backed submissions connect imagery, weights, and transit data."}
-                </p>
-                <Button
-                  onClick={handleVerifyFeatured}
-                  disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:translate-x-1"
-                >
-                  {isSubmitting ? "Verifying..." : "Verify on-chain"}
-                  <ArrowRight size={16} />
-                </Button>
-                {lastSubmissionTx && (
-                  <p className="mt-3 text-xs text-lime-400">
-                    Last update: {lastSubmissionTx}
-                  </p>
-                )}
-              </div>
-            </article>
-
-            <article className="landing-panel-card">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-2xl font-black tracking-tight text-white">
-                    Redemption catalog
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                    Turn rewards into transport credits, eco-market vouchers, and partner perks.
-                  </p>
-                </div>
-                <Sparkles className="text-lime-200" />
-              </div>
-              <div className="mt-8 grid grid-cols-3 gap-3">
-                {dashboard.rewards.slice(0, 3).map((reward) => (
-                  <div
-                    key={reward.id}
-                    className="rounded-2xl border border-white/10 bg-black/25 px-3 py-6 text-center"
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-lime-100">
-                      {reward.cost} ECO
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-white">{reward.title}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-
-            <article className="landing-panel-card">
-              <ShieldCheck className="mb-4 text-lime-200" />
-              <h3 className="text-xl font-black tracking-tight text-white">Privacy shield</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                Hashes and audit trails stay public while identity-sensitive data remains tightly
-                controlled.
-              </p>
-            </article>
-
-            <article className="landing-panel-card">
-              <Leaf className="mb-4 text-lime-200" />
-              <h3 className="text-xl font-black tracking-tight text-white">DAO governance</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                Token holders shape rebates, new regional missions, and treasury-backed growth
-                campaigns.
-              </p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section id="leaderboard" className="landing-section px-5 py-24 lg:px-8">
-        <div className="mx-auto grid w-full max-w-7xl gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
-          <div className="landing-proof-card">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-lime-200">
-                    Live proof feed
-                  </p>
-                  <p className="mt-2 font-mono text-xs text-slate-400">
-                    CHAIN_ID: {dashboard.chainStatus.chainId}
-                  </p>
-                </div>
-                <Badge className="border-lime-300/30 bg-lime-300/10 text-lime-100">
-                  stable
-                </Badge>
-              </div>
-              <div className="space-y-3 font-mono text-xs">
-                {proofFeed.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-4 py-3"
-                    style={{ opacity: 1 - index * 0.14 }}
-                  >
-                    <span className="text-lime-200">
-                      TX_{item.id.slice(0, 4).toUpperCase()}...{item.id.slice(-3).toUpperCase()}
-                    </span>
-                    <span className="text-slate-300">{item.builder}</span>
-                    <span className="text-white">
-                      {item.amount} {item.denom}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="landing-kicker">On-chain proof</p>
-            <h2 className="landing-title">
-              Transparent rewards. No greenwashing.
-            </h2>
-            <p className="mt-5 text-base leading-8 text-slate-300">
-              Every proof, bridge event, and reward distribution has a visible anchor on Initia.
-              We combine oracle-backed checks, community oversight, and appchain-native economics so
-              sustainability claims become something people can inspect instead of just trust.
-            </p>
-
-            <div className="mt-10 space-y-6">
-              <FeatureRow
-                title="Satellite and IoT oracles"
-                description="Transit taps, recycling weights, and field imagery can all feed into the verification layer."
-              />
-              <FeatureRow
-                title="Community consensus"
-                description="Leaderboard momentum and DAO coordination turn verification into an active social loop."
-              />
-              <FeatureRow
-                title="Reusable economic primitives"
-                description="Rebates, staking, bridge flows, and catalog redemptions reinforce long-term participation."
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-section relative overflow-hidden bg-black/30 px-5 py-24 lg:px-8">
-        <div className="mx-auto flex w-full max-w-5xl flex-col items-center text-center">
-          <p className="landing-kicker">Ready for demo day</p>
-          <h2 className="mt-2 text-balance text-4xl font-black tracking-tight text-white md:text-6xl">
-            Open the dashboard, submit proof, and let Initia carry the infrastructure.
+        {/* ── Impact Metrics Section ─────────────── */}
+        <section className="flex flex-col items-center rounded-lg bg-[var(--color-card)] px-8 py-24 lg:py-40 shadow-[0px_20px_40px_rgba(45,52,53,0.02)]">
+          <h2 className="heading-2 pb-12 lg:pb-24 text-center">
+            The collective weight of individual intent.
           </h2>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-            EcoLoop is designed to feel like a polished product first and a chain deployment second.
-            The demo route stays live, the landing page tells the story, and the proof loop is ready
-            when judges click through.
-          </p>
-          <div className="mt-10 flex flex-wrap justify-center gap-4">
-            {hasWalletDemoSetup ? <LandingWalletActions /> : <LandingWalletFallback />}
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              Explore dashboard
-              <ArrowRight size={16} />
-            </Link>
-          </div>
-        </div>
-      </section>
 
-      <footer className="border-t border-white/8 bg-[#090b08] px-5 py-10 lg:px-8">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-2xl font-black tracking-tight text-lime-100">EcoLoop</p>
-            <p className="mt-2 text-sm text-slate-400">
-              Initia-native coordination for verified climate action.
+          <div className="grid w-full max-w-[1024px] grid-cols-1 gap-12 lg:gap-16 px-8 md:grid-cols-2 lg:grid-cols-4">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="h-5 w-5 text-[var(--color-primary)]" />
+                <p className="metric-value-lg text-[var(--color-text-dark)]">
+                  {(protocolStats.totalActions / 1000000).toFixed(1)}M
+                </p>
+              </div>
+              <p className="label-uppercase text-sm">ACTIONS VERIFIED</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 mb-2">
+                <Coins className="h-5 w-5 text-[var(--color-primary)]" />
+                <p className="metric-value-lg text-[var(--color-text-dark)]">
+                  ${(protocolStats.totalRewards / 1000000).toFixed(1)}M
+                </p>
+              </div>
+              <p className="label-uppercase text-sm">REWARDS DISTRIBUTED</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-5 w-5 text-[var(--color-primary)]" />
+                <p className="metric-value-lg text-[var(--color-text-dark)]">
+                  {(protocolStats.activeUsers / 1000).toFixed(1)}K
+                </p>
+              </div>
+              <p className="label-uppercase text-sm">ACTIVE USERS</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-5 w-5 text-[var(--color-primary)]" />
+                <p className="metric-value-lg text-[var(--color-text-dark)]">
+                  ${(protocolStats.tvl / 1000000).toFixed(1)}M
+                </p>
+              </div>
+              <p className="label-uppercase text-sm">TOTAL VALUE LOCKED</p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Social Proof Section ───────────────── */}
+        <section className="flex flex-col items-center py-12 lg:py-24">
+          <div className="text-center mb-12">
+            <h3 className="heading-3 mb-4">Trusted by leading organizations</h3>
+            <p className="text-body text-[var(--color-text-muted)] max-w-2xl">
+              Join thousands of users and organizations making a measurable impact on climate action.
             </p>
           </div>
-          <div className="flex flex-wrap gap-6 text-sm text-slate-300">
-            <Link href="/dashboard" className="transition hover:text-white">
-              Dashboard
-            </Link>
-            <a
-              href="https://docs.initia.xyz/hackathon/get-started"
-              target="_blank"
-              rel="noreferrer"
-              className="transition hover:text-white"
-            >
-              Initia docs
-            </a>
-            <a
-              href={initiaSubmission.deploymentLink}
-              target="_blank"
-              rel="noreferrer"
-              className="transition hover:text-white"
-            >
-              Github
-            </a>
-            <a
-              href={initiaSubmission.demoVideo}
-              target="_blank"
-              rel="noreferrer"
-              className="transition hover:text-white"
-            >
-              Demo video
-            </a>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-16 items-center opacity-70">
+            {["Climate Corp", "EcoInit", "GreenDAO", "CarbonNeutral"].map((partner) => (
+              <div key={partner} className="flex items-center justify-center">
+                <div className="text-lg font-semibold text-[var(--color-text-muted)]">
+                  {partner}
+                </div>
+              </div>
+            ))}
           </div>
+        </section>
+      </div>
+
+      {/* ── Footer ───────────────────────────────── */}
+      <footer className="mt-32 bg-[var(--color-secondary-alt)] px-8 py-16">
+        <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between flex-wrap gap-4">
+          <span className="text-lg font-semibold tracking-[-0.9px] text-[var(--color-text-dark)]">
+            The Quiet Earth
+          </span>
+          <span className="text-sm text-[var(--color-text-muted)]">
+            © 2024 The Quiet Earth Protocol. Built on Initia.
+          </span>
         </div>
       </footer>
-    </main>
-  );
-}
-
-function LandingWalletActions() {
-  const { initiaAddress, connect } = useWallet();
-  const { openWallet } = useInterwovenKit();
-
-  return (
-    <Button
-      className="landing-primary-button px-6 py-3 text-sm"
-      onClick={() => {
-        if (initiaAddress) {
-          openWallet();
-          return;
-        }
-
-        void connect();
-      }}
-    >
-      {initiaAddress ? "Open wallet" : "Launch wallet session"}
-    </Button>
-  );
-}
-
-function LandingWalletFallback() {
-  return (
-    <Button className="landing-primary-button cursor-not-allowed px-6 py-3 text-sm opacity-70" disabled>
-      Wallet setup required
-    </Button>
-  );
-}
-
-function MetricChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-      <p className="text-[11px] uppercase tracking-[0.25em] text-slate-400">{label}</p>
-      <p className="mt-2 text-lg font-bold text-white">{value}</p>
     </div>
   );
 }
 
-function FlowCard({
+/* ── Process Step Component ──────────────────────── */
+
+function ProcessStep({
   icon,
   title,
   description,
 }: {
-  icon: ReactNode;
+  icon: React.ReactNode;
   title: string;
   description: string;
 }) {
   return (
-    <article className="landing-step-card">
-      <div className="landing-step-icon">{icon}</div>
-      <h3 className="mt-6 text-2xl font-black tracking-tight text-white">{title}</h3>
-      <p className="mt-3 text-sm leading-7 text-slate-300">{description}</p>
-    </article>
-  );
-}
+    <div>
+      {/* Icon */}
+      <div className="mb-8 flex h-16 w-16 items-center justify-center bg-[var(--color-secondary-alt)] rounded-lg">
+        {icon}
+      </div>
 
-function FeatureRow({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex gap-4">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-        <Sparkles className="text-lime-200" size={20} />
-      </div>
-      <div>
-        <h3 className="text-lg font-bold text-white">{title}</h3>
-        <p className="mt-1 text-sm leading-6 text-slate-300">{description}</p>
-      </div>
+      {/* Title */}
+      <h3 className="heading-3 mb-4">
+        {title}
+      </h3>
+
+      {/* Description */}
+      <p className="text-body max-w-[300px]">
+        {description}
+      </p>
     </div>
   );
 }

@@ -1,125 +1,224 @@
+"use client";
+
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Gift, ShoppingBag, Store } from "lucide-react";
 
 import { ProductShell } from "@/components/layout/product-shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { fallbackDashboard } from "@/lib/dashboard-data";
 
-const merchantStats = [
-  {
-    label: "Partner brands",
-    value: "28",
-    detail: "Local and regional merchants redeeming on-chain rewards.",
-  },
-  {
-    label: "Redemption completion",
-    value: "97.4%",
-    detail: "Operators can trace payout, inventory, and delivery from one flow.",
-  },
-  {
-    label: "Average basket",
-    value: "84 ECO",
-    detail: "High-intent users convert rewards into practical climate-friendly value.",
-  },
-];
+/* ── Figma asset constants ──────────────────────── */
+const imgUserProfile = "";
+const imgBrandLogo = "";
+const imgBrandLogo1 = "";
+const imgBrandLogo2 = "";
+const imgBrandLogo3 = "";
+const imgNotificationIcon = "";
+const imgBalanceIcon = "";
+const imgArrowIcon = "";
+const imgNavDashboard = "";
+const imgNavActions = "";
+const imgNavOffers = "";
+const imgNavHistory = "";
+const imgNavImpact = "";
 
 export default function MerchantsPage() {
-  const featuredRewards = fallbackDashboard.rewards.slice(0, 4);
+  const offers = [
+    {
+      brand: "AURA ESSENTIALS",
+      title: "20% off zero-waste\nstarter kits",
+      points: "250 PTS",
+      logo: imgBrandLogo
+    },
+    {
+      brand: "GREEN ROUTE",
+      title: "Free month of bike\nshare membership",
+      points: "300 PTS",
+      logo: imgBrandLogo1
+    },
+    {
+      brand: "ECO KITCHEN",
+      title: "$30 credit for organic\nproduce delivery",
+      points: "400 PTS",
+      logo: imgBrandLogo2
+    },
+    {
+      brand: "LUMINA",
+      title: "$50 credit towards\nsolar panel installation",
+      points: "500 PTS",
+      logo: imgBrandLogo3
+    }
+  ];
 
   return (
-    <ProductShell
-      title="Merchant network"
-      subtitle="A cleaner SaaS marketplace for redemptions, partner inventory, and appchain-native reward circulation."
-    >
-      <div className="space-y-8">
-        <section className="surface overflow-hidden rounded-[2rem] px-6 py-6 sm:px-8 sm:py-8">
-          <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
-            <div className="space-y-5">
-              <Badge>Merchant ops</Badge>
-              <div className="space-y-4">
-                <h2 className="max-w-3xl text-4xl font-semibold tracking-tight text-white md:text-5xl">
-                  Keep redemption, settlement, and partner visibility inside the same product.
-                </h2>
-                <p className="max-w-2xl text-base leading-7 text-slate-300">
-                  The merchant experience now reads like a premium operations surface instead of a
-                  placeholder route. Operators can monitor inventory, highlight sustainable offers,
-                  and keep reward circulation tightly tied to real-world impact.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/merchants/hub-main">
-                  <Button>
-                    Open merchant hub
-                    <ArrowRight size={15} />
-                  </Button>
-                </Link>
-                <Link href="/merchants/redemption">
-                  <Button variant="outline">
-                    Review redemption flow
-                    <Gift size={15} />
-                  </Button>
-                </Link>
-              </div>
+    <ProductShell>
+      <div className="flex flex-col gap-24 max-w-[1280px] mx-auto px-24 py-20">
+        {/* Header Section */}
+        <div className="flex flex-col gap-6 max-w-[672px]">
+          <h1
+            className="text-[#2d3435]"
+            style={{
+              fontFamily: "var(--font-heading)",
+              fontSize: "56px",
+              fontWeight: "600",
+              lineHeight: "61.6px",
+              letterSpacing: "-1.12px"
+            }}
+          >
+            Curated Rewards
+          </h1>
+          
+          <p
+            className="text-[#5a6061] max-w-[672px]"
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: "18px",
+              lineHeight: "28px"
+            }}
+          >
+            Redeem your accrued impact points for exclusive offers from our network of<br />
+            zero-waste and sustainable partners. A quiet exchange for a better earth.
+          </p>
+          
+          <div className="surface-card flex items-center gap-3 px-6 py-4 shadow-lg">
+            <div className="relative h-4.5 w-4.5">
+              <Image
+                src={imgBalanceIcon}
+                alt="Balance"
+                fill
+                className="object-contain"
+              />
             </div>
-
-            <div className="grid gap-4">
-              {merchantStats.map((stat) => (
-                <Card key={stat.label}>
-                  <p className="text-sm text-slate-400">{stat.label}</p>
-                  <p className="mt-4 text-3xl font-semibold tracking-tight text-white">{stat.value}</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-400">{stat.detail}</p>
-                </Card>
-              ))}
+            <div>
+              <p
+                className="text-[#5a6061]"
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: "12px",
+                  fontWeight: "400",
+                  letterSpacing: "0.6px",
+                  textTransform: "uppercase"
+                }}
+              >
+                AVAILABLE BALANCE
+              </p>
+              <div className="flex items-end">
+                <span
+                  className="text-[#2d3435]"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: "24px",
+                    fontWeight: "500",
+                    lineHeight: "32px"
+                  }}
+                >
+                  1,250{" "}
+                </span>
+                <span
+                  className="text-[#757c7d]"
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "16px",
+                    lineHeight: "24px"
+                  }}
+                >
+                  pts
+                </span>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Card title="Featured catalog" className="h-full">
-            <div className="grid gap-4 md:grid-cols-2">
-              {featuredRewards.map((reward) => (
-                <article
-                  key={reward.id}
-                  className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-200">
-                      <ShoppingBag size={18} />
-                    </span>
-                    <Badge>{reward.cost} ECO</Badge>
+        {/* Offers Grid */}
+        <div className="grid grid-cols-3 gap-12">
+          {offers.map((offer, index) => (
+            <div key={index} className="surface-card flex flex-col justify-between p-8 rounded-sm shadow-lg relative">
+              <div className="pb-12">
+                <div className="flex items-start justify-between">
+                  <div className="surface-muted flex items-center justify-center rounded-lg h-12 w-12">
+                    <div className="h-full w-full mix-blend-multiply opacity-80">
+                      <Image
+                        src={offer.logo}
+                        alt={offer.brand}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </div>
-                  <h3 className="mt-5 text-xl font-semibold text-white">{reward.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-400">{reward.subtitle}</p>
-                  <p className="mt-4 text-sm font-medium text-emerald-300">{reward.partner}</p>
-                </article>
-              ))}
-            </div>
-          </Card>
-
-          <Card title="Operator notes">
-            <div className="space-y-4">
-              {[
-                "Redemptions flow directly from verified ECO balances into partner inventory.",
-                "Merchant teams can launch seasonal campaigns without redesigning the fulfillment layer.",
-                "Appchain-owned fees make repeat redemption activity an engine for treasury growth.",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="rounded-[1.5rem] border border-white/10 bg-black/20 p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-100">
-                      <Store size={16} />
-                    </span>
-                    <p className="text-sm leading-6 text-slate-300">{item}</p>
+                  <div className="surface-secondary px-3 py-1.5 rounded-sm">
+                    <p
+                      className="text-[#2d3435]"
+                      style={{
+                        fontFamily: "var(--font-body)",
+                        fontSize: "10px",
+                        fontWeight: "400",
+                        letterSpacing: "1px",
+                        textTransform: "uppercase"
+                      }}
+                    >
+                      {offer.points}
+                    </p>
                   </div>
                 </div>
-              ))}
+              </div>
+              
+              <div className="flex flex-col gap-2">
+                <p
+                  className="text-[#757c7d]"
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "12px",
+                    fontWeight: "400",
+                    letterSpacing: "1.2px",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  {offer.brand}
+                </p>
+                
+                <h3
+                  className="text-[#2d3435]"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: "22px",
+                    fontWeight: "500",
+                    lineHeight: "30.25px"
+                  }}
+                >
+                  {offer.title.split('\n').map((line, i) => (
+                    <span key={i}>
+                      {line}
+                      {i < offer.title.split('\n').length - 1 && <br />}
+                    </span>
+                  ))}
+                </h3>
+                
+                <button className="flex items-center gap-2 pt-4">
+                  <span
+                    className="text-[#3b6934]"
+                    style={{
+                      fontFamily: "var(--font-body)",
+                      fontSize: "14px",
+                      fontWeight: "400",
+                      letterSpacing: "1.4px",
+                      textTransform: "uppercase"
+                    }}
+                  >
+                    REDEEM OFFER
+                  </span>
+                  <div className="relative h-3 w-3">
+                    <Image
+                      src={imgArrowIcon}
+                      alt="Arrow"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                </button>
+              </div>
+              
+              <div className="absolute inset-0 border border-[#adb3b4] rounded-sm opacity-10" />
             </div>
-          </Card>
-        </section>
+          ))}
+        </div>
       </div>
     </ProductShell>
   );

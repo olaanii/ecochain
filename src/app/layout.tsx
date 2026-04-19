@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { AppProviders } from "@/components/providers";
 import { NavigationLoading } from "@/components/layout/navigation-loading";
@@ -9,13 +11,13 @@ import { hasClerkSetup, runtimeConfig } from "@/lib/runtime-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EcoLoop - Initia appchain",
+  title: "The Quiet Earth — Verified Sustainability on Initia",
   description:
-    "Earn verified rewards for sustainable actions and run an Initia appchain without managing the infrastructure.",
+    "Transform real-world actions into verified rewards on the Initia network. A refined sustainability protocol.",
   openGraph: {
-    title: "EcoLoop",
+    title: "The Quiet Earth",
     description:
-      "Initia-powered sustainability platform with instant bridging, Auto-sign UX, and community DAO tools.",
+      "Transform real-world ecological actions into verified on-chain rewards. Built on Initia.",
     url: "https://example.com",
   },
 };
@@ -28,8 +30,8 @@ export default function RootLayout({
   const app = <AppProviders>{children}</AppProviders>;
 
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full bg-slate-950 text-slate-50">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <body className="min-h-full bg-[var(--color-surface)] text-[var(--color-text-dark)]">
         <NavigationLoading />
         {hasClerkSetup ? (
           <ClerkProvider
@@ -46,6 +48,8 @@ export default function RootLayout({
         ) : (
           app
         )}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

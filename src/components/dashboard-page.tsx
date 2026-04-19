@@ -1,389 +1,249 @@
 "use client";
 
-import { ArrowUpRight, Coins, ShieldCheck, Sparkles, Wallet, Zap } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useInterwovenKit } from "@initia/interwovenkit-react";
+import { Leaf, Zap, Recycle, ArrowUpRight, ArrowDownRight, Lock, Send, RefreshCw, Plus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ProductShell } from "@/components/layout/product-shell";
 import { useWallet } from "@/contexts/wallet-context";
-import { fallbackDashboard, type EcoDataResponse } from "@/lib/dashboard-data";
-import { runtimeConfig } from "@/lib/runtime-config";
-
-const fetchEcoData = async () =>
-  fetch("/api/tasks").then((response) => response.json() as Promise<EcoDataResponse>);
+import { useWalletStore } from "@/stores/wallet-store";
+import { useTransactionStore } from "@/stores/transaction-store";
+import { useUserStore } from "@/stores/user-store";
+import { BalanceDisplay } from "@/components/balance-display";
+import { TransactionFlow } from "@/components/transaction-flow";
+import { ExplorerWidget } from "@/components/explorer-widget";
+import { DashboardSkeleton } from "@/components/skeletons";
+import { Button } from "@/components/ui/button";
 
 type InterwovenKitActions = {
   openConnect?: () => void;
   openWallet?: () => void;
-  openBridge?: (options?: { srcChainId?: string }) => void;
-  openDeposit?: (options?: { denoms?: string[] }) => void;
-  openWithdraw?: (options?: { denoms?: string[] }) => void;
 };
 
-function formatAddress(address?: string, username?: string) {
-  if (username) return username;
-  if (!address) return "Wallet session required";
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
+const activityIcons: Record<string, React.ReactNode> = {
+  stake: <Leaf className="h-5 w-5 text-green-600" />,
+  unstake: <ArrowDownRight className="h-5 w-5 text-yellow-600" />,
+  claim: <Zap className="h-5 w-5 text-blue-600" />,
+  verify: <Recycle className="h-5 w-5 text-purple-600" />,
+  other: <ArrowUpRight className="h-5 w-5 text-gray-600" />,
+};
 
 export function DashboardPage() {
-  const { data } = useQuery({
-    queryKey: ["ecoData"],
-    queryFn: fetchEcoData,
-    staleTime: 1000 * 60,
-    initialData: fallbackDashboard,
-  });
-
-  const dashboard = data ?? fallbackDashboard;
-  const { initiaAddress, username } = useWallet();
+  const { initiaAddress, username, isConnected } = useWallet();
+  const { balance } = useWalletStore();
+  const { transactions, getRecentTransactions } = useTransactionStore();
+  const { profile } = useUserStore();
   const kit = useInterwovenKit() as unknown as InterwovenKitActions;
-  const requireWallet = (callback?: () => void) => {
-    if (!initiaAddress) {
-      kit.openConnect?.();
-      return;
-    }
+  const [isLoading, setIsLoading] = useState(true);
 
-    callback?.();
-  };
+  // Calculate impact metrics from user profile or use defaults
+  const impactScore = profile.impactScore || 0;
+  const totalRewards = profile.totalRewards || "0";
 
-  const workspaceStats = [
-    {
-      label: "Revenue retained",
-      value: dashboard.economics.minted,
-      detail: "Every reward and redemption flows through the appchain treasury.",
-    },
-    {
-      label: "Bridge requests",
-      value: dashboard.economics.bridgeRequests,
-      detail: "Cross-chain liquidity stays close to the operator workflow.",
-    },
-    {
-      label: "Verification uptime",
-      value: "99.98%",
-      detail: "Proof routing, oracle checks, and fraud screening remain online.",
-    },
-    {
-      label: "Wallet mode",
-      value: dashboard.chainStatus.autoSign,
-      detail: "Session-based signing keeps repeat actions fast and predictable.",
-    },
-  ];
+  // Staking metrics - fetch from API or contract
+  const stakedAmount = "0.00";
+  const stakingRewards = "0.00";
+  const stakingAPY = "0.0";
 
-  const operatorActions = [
-    {
-      label: "Wallet",
-      description: "Review balances, assets, and account state.",
-      onClick: () => (initiaAddress ? kit.openWallet?.() : kit.openConnect?.()),
-      icon: Wallet,
-    },
-    {
-      label: "Bridge",
-      description: "Route value between Initia and partner ecosystems.",
-      onClick: () => requireWallet(() => kit.openBridge?.({ srcChainId: runtimeConfig.initiaChainId })),
-      icon: ArrowUpRight,
-    },
-    {
-      label: "Deposit",
-      description: "Move fresh liquidity into the operating treasury.",
-      onClick: () => requireWallet(() => kit.openDeposit?.({ denoms: ["INITIA"] })),
-      icon: Coins,
-    },
-    {
-      label: "Withdraw",
-      description: "Settle rewards or treasury transfers back to users.",
-      onClick: () => requireWallet(() => kit.openWithdraw?.({ denoms: ["INITIA"] })),
-      icon: Zap,
-    },
-  ];
+  // Get recent transactions from store
+  const recentActivities = getRecentTransactions(5).map((tx) => ({
+    id: tx.id,
+    title: `${tx.type.charAt(0).toUpperCase() + tx.type.slice(1)} transaction`,
+    time: new Date(tx.timestamp).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).toUpperCase(),
+    amount: tx.amount || "0",
+    type: tx.type,
+    isPositive: tx.type === "claim" || tx.type === "verify",
+    hash: tx.hash,
+  }));
+
+  useEffect(() => {
+    // Simulate loading for smooth transition
+    const timer = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <ProductShell>
+        <DashboardSkeleton />
+      </ProductShell>
+    );
+  }
 
   return (
-    <ProductShell
-      title="Operator dashboard"
-      subtitle="A modern Initia-native workspace for verification, rewards, merchants, and bridge liquidity."
-    >
-      <div className="space-y-8">
-        <section className="surface relative overflow-hidden rounded-[2rem] px-6 py-6 sm:px-8 sm:py-8">
-          <div className="grid gap-8 xl:grid-cols-[1.25fr_0.95fr]">
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <Badge>Appchain-owned revenue</Badge>
-                <Badge variant="info">Season 1 build</Badge>
-              </div>
+    <ProductShell>
+      <div className="flex flex-col gap-8 lg:gap-12">
+        {/* Welcome Section */}
+        <div className="max-w-[768px] pt-6 lg:pt-12">
+          <h1 className="heading-1 text-[var(--color-text-dark)]">
+            {isConnected && username ? (
+              <>Welcome back, {username}.</>
+            ) : (
+              <>Quiet progress.<br />Meaningful impact.</>
+            )}
+          </h1>
+          {isConnected && initiaAddress && (
+            <p className="text-body mt-4 text-[var(--color-text-muted)]">
+              {initiaAddress.slice(0, 8)}...{initiaAddress.slice(-6)}
+            </p>
+          )}
+        </div>
 
-              <div className="space-y-4">
-                <h2 className="max-w-3xl text-4xl font-semibold tracking-tight text-white md:text-5xl">
-                  One control plane for verified eco-actions, settlement, and treasury growth.
-                </h2>
-                <p className="max-w-2xl text-base leading-7 text-slate-300">
-                  EcoChain turns proof submission, reward minting, merchant redemption, and
-                  bridging into one SaaS-style workspace so operators can manage the whole climate
-                  economy without jumping between fragmented tools.
-                </p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {operatorActions.map((action) => {
-                  const Icon = action.icon;
-
-                  return (
-                    <button
-                      key={action.label}
-                      type="button"
-                      onClick={action.onClick}
-                      className="group rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-4 text-left transition hover:border-emerald-300/30 hover:bg-white/10"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-300/12 text-emerald-200">
-                          <Icon size={18} />
-                        </span>
-                        <ArrowUpRight
-                          size={16}
-                          className="text-slate-500 transition group-hover:text-white"
-                        />
-                      </div>
-                      <p className="mt-5 text-base font-semibold text-white">{action.label}</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-400">{action.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
+        {/* Metric Cards Grid */}
+        <div className="grid gap-4 lg:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-12">
+          {/* Your Impact Card */}
+          <div className="surface-card lg:col-span-4 flex min-h-[280px] flex-col items-start justify-end p-6 lg:p-8">
+            <div className="mb-6 w-full">
+              <p className="label-uppercase w-full">YOUR IMPACT</p>
             </div>
-
-            <div className="grid gap-4">
-              <Card title="Operator session" className="h-full">
-                <div className="space-y-5">
-                  <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5">
-                    <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">
-                      Connected identity
-                    </p>
-                    <p className="mt-3 text-2xl font-semibold text-white">
-                      {formatAddress(initiaAddress, username)}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">
-                      {initiaAddress
-                        ? "Wallet session active and ready for bridge, redemption, and proof flows."
-                        : "Connect an Initia wallet to unlock operator controls and bridge actions."}
-                    </p>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
-                        Chain
-                      </p>
-                      <p className="mt-3 text-lg font-semibold text-white">
-                        {dashboard.chainStatus.chainId}
-                      </p>
-                    </div>
-                    <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
-                        Block time
-                      </p>
-                      <p className="mt-3 text-lg font-semibold text-white">
-                        {dashboard.chainStatus.blockTime}
-                      </p>
-                    </div>
-                  </div>
-
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      if (initiaAddress) {
-                        kit.openWallet?.();
-                        return;
-                      }
-
-                      kit.openConnect?.();
-                    }}
-                  >
-                    {initiaAddress ? "Open wallet workspace" : "Connect Initia wallet"}
-                  </Button>
-                </div>
-              </Card>
+            <div className="mb-2 w-full">
+              <p className="metric-value text-[56px] lg:text-[64px]">
+                {impactScore.toLocaleString()}
+              </p>
+            </div>
+            <div className="w-full">
+              <p className="text-body">kg CO2 saved</p>
             </div>
           </div>
-        </section>
 
-        <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-          {workspaceStats.map((stat) => (
-            <Card key={stat.label}>
-              <p className="text-sm text-slate-400">{stat.label}</p>
-              <p className="mt-4 text-3xl font-semibold tracking-tight text-white">{stat.value}</p>
-              <p className="mt-3 text-sm leading-6 text-slate-400">{stat.detail}</p>
-            </Card>
-          ))}
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Card title="Verification pipeline">
-            <div className="space-y-4">
-              {dashboard.tasks.slice(0, 4).map((task) => (
-                <div
-                  key={task.id}
-                  className="flex flex-col gap-4 rounded-[1.5rem] border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-start sm:justify-between"
-                >
-                  <div className="max-w-xl">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <p className="text-lg font-semibold text-white">{task.name}</p>
-                      <Badge>{task.category}</Badge>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">{task.description}</p>
-                    <p className="mt-3 text-xs uppercase tracking-[0.28em] text-emerald-300">
-                      {task.verificationHint}
-                    </p>
-                  </div>
-                  <div className="min-w-40 rounded-[1.25rem] border border-emerald-300/15 bg-emerald-300/8 p-4 text-left">
-                    <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
-                      Reward profile
-                    </p>
-                    <p className="mt-3 text-xl font-semibold text-white">
-                      {task.baseReward} INITIA
-                    </p>
-                    <p className="mt-2 text-sm text-emerald-300">
-                      Multiplier x{task.bonusMultiplier.toFixed(2)}
-                    </p>
-                  </div>
+          {/* Current Balance Card */}
+          <div className="lg:col-span-5">
+            <div className="surface-secondary flex min-h-[280px] flex-col items-start justify-end overflow-hidden p-6 lg:p-8 relative">
+              <div className="green-blur-accent bottom-[-128px] right-[-128px]" />
+              <div className="flex flex-col gap-2 w-full">
+                <div className="w-full">
+                  <p className="label-uppercase w-full">CURRENT BALANCE</p>
                 </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card title="Bridge and redemption">
-            <div className="space-y-4">
-              {dashboard.bridgeHistory.slice(0, 3).map((entry) => (
-                <div
-                  key={entry.id}
-                  className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-lg font-semibold text-white">
-                        {entry.amount} {entry.denom}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-400">{entry.builder}</p>
-                    </div>
-                    <Badge variant="success">{entry.status}</Badge>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
-                    <span>{entry.targetChain}</span>
-                    <a
-                      href={entry.transactionLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-emerald-300"
-                    >
-                      View transaction
-                    </a>
-                  </div>
-                </div>
-              ))}
-
-              <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5">
-                <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">
-                  Merchant catalog snapshot
-                </p>
-                <div className="mt-4 space-y-3">
-                  {dashboard.rewards.slice(0, 3).map((reward) => (
-                    <div key={reward.id} className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-white">{reward.title}</p>
-                        <p className="text-sm text-slate-400">{reward.partner}</p>
-                      </div>
-                      <p className="text-sm font-semibold text-emerald-300">
-                        {reward.cost} ECO
-                      </p>
-                    </div>
-                  ))}
+                <div className="w-full pt-4">
+                  <BalanceDisplay 
+                    showChange={true} 
+                    className="metric-value-green text-[56px] lg:text-[64px]" 
+                  />
                 </div>
               </div>
             </div>
-          </Card>
-        </section>
+          </div>
 
-        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <Card title="Ecosystem momentum">
-            <div className="space-y-4">
-              {dashboard.analytics.map((point) => (
-                <div key={point.label} className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-slate-400">{point.label}</p>
-                  <div className="mt-3 flex items-end justify-between gap-4">
-                    <p className="text-2xl font-semibold text-white">{point.value}</p>
-                    <p className="text-sm font-medium text-emerald-300">{point.trend}</p>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-400">{point.insight}</p>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <div className="grid gap-6">
-            <Card title="Governance queue">
-              <div className="space-y-3">
-                {dashboard.proposals.map((proposal) => (
-                  <div
-                    key={proposal.id}
-                    className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-base font-semibold text-white">{proposal.title}</p>
-                      <Badge variant="warning">{proposal.status}</Badge>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">
-                      {proposal.description}
-                    </p>
-                    <p className="mt-3 text-xs uppercase tracking-[0.25em] text-slate-500">
-                      For {proposal.votesFor} / Against {proposal.votesAgainst}
-                    </p>
-                  </div>
-                ))}
+          {/* Staking Overview Card */}
+          <div className="surface-card lg:col-span-3 flex min-h-[280px] flex-col items-start justify-between p-6 lg:p-8">
+            <div className="w-full">
+              <div className="flex items-center gap-2 mb-4">
+                <Lock className="h-5 w-5 text-[var(--color-primary)]" />
+                <p className="label-uppercase w-full">STAKING</p>
               </div>
-            </Card>
-
-            <Card title="Leaderboard">
               <div className="space-y-3">
-                {dashboard.leaderboard.map((entry, index) => (
-                  <div
-                    key={entry.name}
-                    className="flex items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/5 p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-sm font-semibold text-white">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-white">{entry.name}</p>
-                        <p className="text-sm text-slate-400">{entry.region}</p>
+                <div>
+                  <p className="text-sm text-[var(--color-text-muted)]">Staked</p>
+                  <p className="text-2xl font-bold">{stakedAmount} INIT</p>
+                </div>
+                <div>
+                  <p className="text-sm text-[var(--color-text-muted)]">Rewards</p>
+                  <p className="text-lg font-bold text-[var(--color-primary)]">+{stakingRewards} INIT</p>
+                </div>
+                <div>
+                  <p className="text-sm text-[var(--color-text-muted)]">APY</p>
+                  <p className="text-lg font-bold">{stakingAPY}%</p>
+                </div>
+              </div>
+            </div>
+            <Link href="/staking" className="w-full">
+              <Button variant="outline" className="w-full">
+                Manage Staking
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Quick Action Buttons */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Button variant="outline" className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            <span>Stake</span>
+          </Button>
+          <Button variant="outline" className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            <span>Unstake</span>
+          </Button>
+          <Button variant="outline" className="flex items-center gap-2">
+            <Send className="h-4 w-4" />
+            <span>Send</span>
+          </Button>
+          <Button variant="outline" className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" />
+            <span>Refresh</span>
+          </Button>
+        </div>
+
+        {/* Recent Activity & Transaction Status */}
+        <div className="grid gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-12">
+          {/* Recent Activity Section */}
+          <div className="lg:col-span-8 flex flex-col gap-6 pb-12">
+            <div className="w-full">
+              <h2 className="heading-2 text-[var(--color-text-dark)]">
+                Recent Activity
+              </h2>
+            </div>
+
+            {recentActivities.length > 0 ? (
+              <div className="flex flex-col gap-4 w-full">
+                {recentActivities.map((activity) => (
+                  <div key={activity.id} className="activity-item p-4 surface-card rounded-lg">
+                    <div className="activity-icon">
+                      <div className="icon-bg">
+                        {activityIcons[activity.type] || activityIcons.other}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-white">{entry.points}</p>
-                      <p className="text-sm text-emerald-300">{entry.streakDays} day streak</p>
+                    <div className="activity-content">
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[var(--color-text-dark)] text-lg">
+                          {activity.title}
+                        </p>
+                        <p className="label-uppercase">{activity.time}</p>
+                      </div>
+                      <p className={`font-medium ${activity.isPositive ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}>
+                        {activity.isPositive ? "+" : "-"}{activity.amount} INIT
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
-            </Card>
-          </div>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-3">
-          {dashboard.compliance.map((item) => (
-            <div
-              key={item}
-              className="rounded-[1.75rem] border border-white/10 bg-black/20 p-5"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-200">
-                  <ShieldCheck size={18} />
-                </span>
-                <p className="text-sm font-medium leading-6 text-slate-200">{item}</p>
+            ) : (
+              <div className="surface-card p-8 text-center">
+                <p className="text-[var(--color-text-muted)]">
+                  No recent activity. Start by making a transaction!
+                </p>
               </div>
+            )}
+
+            <div className="flex flex-col items-start pt-4">
+              <Link
+                href="/rewards"
+                className="text-[var(--color-primary)] label-action hover:opacity-80 transition-opacity"
+              >
+                VIEW FULL HISTORY
+              </Link>
             </div>
-          ))}
-        </section>
+          </div>
+
+          {/* Transaction Status Sidebar */}
+          <div className="lg:col-span-4 space-y-6">
+            <h2 className="heading-3 text-[var(--color-text-dark)]">
+              Transaction Status
+            </h2>
+            <TransactionFlow />
+          </div>
+        </div>
+
+        {/* Mobile Explorer */}
+        <div className="lg:hidden">
+          <ExplorerWidget />
+        </div>
       </div>
     </ProductShell>
   );
