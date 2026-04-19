@@ -1,205 +1,486 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowRight, Filter, Sparkles } from "lucide-react";
+import Image from "next/image";
 
 import { ProductShell } from "@/components/layout/product-shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
-type Task = {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  baseReward: number;
-  bonusMultiplier: number;
-  verificationHint: string;
-};
-
-type CategoryFilter = "all" | "Transport" | "Recycling" | "Energy" | "Community";
-
-const categories: CategoryFilter[] = ["all", "Transport", "Recycling", "Energy", "Community"];
+/* ── Figma asset constants ──────────────────────── */
+const imgForestCanopy = "";
+const imgSolarPanels = "";
+const imgVegetables = "";
+const imgFilterIcon = "";
+const imgImpactIcon1 = "";
+const imgImpactIcon2 = "";
+const imgImpactIcon3 = "";
+const imgImpactIcon4 = "";
 
 export default function DiscoverPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
-
-  useEffect(() => {
-    async function fetchTasks() {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/tasks");
-        if (!response.ok) {
-          throw new Error("Failed to fetch tasks");
-        }
-
-        const data = await response.json();
-        setTasks(data.tasks || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
+  const actions = [
+    {
+      id: 1,
+      category: "FORESTRY",
+      title: "Reforestation Project",
+      description: "Join the initiative to plant indigenous trees in degraded areas, restoring natural habitats and sequestering carbon.",
+      impact: "High Impact",
+      points: "+500 Points",
+      image: imgForestCanopy,
+      impactIcon: imgImpactIcon1,
+      isLarge: true
+    },
+    {
+      id: 2,
+      category: "ENERGY",
+      title: "Renewable Energy Audit",
+      description: "Conduct a comprehensive energy audit of your home or workplace and implement renewable solutions.",
+      impact: "Medium Impact",
+      points: "+250 Points",
+      image: imgSolarPanels,
+      impactIcon: imgImpactIcon2,
+      isLarge: false
+    },
+    {
+      id: 3,
+      category: "WASTE",
+      title: "Composting Workshop",
+      description: "Learn and implement sustainable waste management through community composting initiatives.",
+      impact: "Medium Impact",
+      points: "+200 Points",
+      image: imgSolarPanels,
+      impactIcon: imgImpactIcon3,
+      isLarge: false
+    },
+    {
+      id: 4,
+      category: "COMMUNITY",
+      title: "Support Local Agriculture",
+      description: "Commit to purchasing seasonal produce from local farmers markets for one month to reduce transportation emissions and support the local economy.",
+      impact: "Ongoing",
+      points: "+300 Points",
+      image: imgVegetables,
+      impactIcon: imgImpactIcon4,
+      isLarge: false
     }
-
-    void fetchTasks();
-  }, []);
-
-  const filteredTasks = useMemo(
-    () =>
-      selectedCategory === "all"
-        ? tasks
-        : tasks.filter((task) => task.category === selectedCategory),
-    [selectedCategory, tasks],
-  );
-
-  const featuredTask = filteredTasks[0] ?? tasks[0];
+  ];
 
   return (
-    <ProductShell
-      title="Discover eco-actions"
-      subtitle="Browse verified missions, compare reward profiles, and route operators into the proof workflow."
-    >
-      <div className="space-y-8">
-        <section className="surface overflow-hidden rounded-[2rem] px-6 py-6 sm:px-8 sm:py-8">
-          <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="space-y-5">
-              <Badge>Mission discovery</Badge>
-              <div className="space-y-4">
-                <h2 className="max-w-3xl text-4xl font-semibold tracking-tight text-white md:text-5xl">
-                  Turn verified sustainability work into a pipeline operators can actually manage.
-                </h2>
-                <p className="max-w-2xl text-base leading-7 text-slate-300">
-                  Task discovery is no longer a generic card grid. Operators can scan category,
-                  proof requirements, reward yield, and verification readiness in one place before
-                  sending users into the submission flow.
+    <ProductShell>
+      <div className="flex flex-col gap-24">
+        {/* Header Section */}
+        <div className="flex items-end justify-between">
+          <div className="max-w-[672px]">
+            <h1
+              className="text-[#2d3435]"
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "56px",
+                fontWeight: "600",
+                lineHeight: "61.6px",
+                letterSpacing: "-1.12px"
+              }}
+            >
+              Discover Actions
+            </h1>
+            <p
+              className="text-[#5a6061] mt-6"
+              style={{
+                fontFamily: "var(--font-body)",
+                fontSize: "18px",
+                lineHeight: "29.25px"
+              }}
+            >
+              Engage in curated initiatives designed to restore balance to our ecosystems.<br />
+              Every action contributes to a larger, sustainable narrative.
+            </p>
+          </div>
+          <button className="surface-secondary flex items-center gap-2 px-6 py-3 rounded-sm">
+            <div className="relative h-3.5 w-3.5">
+              <Image
+                src={imgFilterIcon}
+                alt="Filter"
+                fill
+                className="object-contain"
+              />
+            </div>
+            <span
+              className="text-[#2d3435]"
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "14px",
+                fontWeight: "600",
+                letterSpacing: "0.42px",
+                textTransform: "uppercase"
+              }}
+            >
+              REFINE
+            </span>
+          </button>
+        </div>
+
+        {/* Bento Grid */}
+        <div className="grid gap-12 grid-cols-12 grid-rows-[542px_350px]">
+          {/* Large Card - Reforestation Project */}
+          <div className="surface-card col-span-8 row-span-1 isolate overflow-hidden relative rounded-sm">
+            <div className="relative h-80 overflow-hidden z-20">
+              <div className="absolute inset-0">
+                <Image
+                  src={imgForestCanopy}
+                  alt="Forest canopy"
+                  fill
+                  className="object-cover"
+                  style={{ objectPosition: "center top" }}
+                />
+              </div>
+              <div className="absolute left-6 top-6 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-sm">
+                <p
+                  className="text-[#2d3435]"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    letterSpacing: "0.36px",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  FORESTRY
                 </p>
               </div>
             </div>
-
-            <div className="rounded-[1.75rem] border border-white/10 bg-black/20 p-6">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-white">Featured mission</p>
-                <Sparkles className="text-emerald-300" size={18} />
+            
+            <div className="bg-white p-8 relative z-10 h-full flex flex-col justify-between">
+              <div className="flex flex-col gap-3">
+                <h2
+                  className="text-[#2d3435]"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: "28px",
+                    fontWeight: "400",
+                    lineHeight: "42px",
+                    letterSpacing: "-0.28px"
+                  }}
+                >
+                  Reforestation Project
+                </h2>
+                <p
+                  className="text-[#5a6061] overflow-hidden"
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "16px",
+                    lineHeight: "24px"
+                  }}
+                >
+                  Join the initiative to plant indigenous trees in degraded areas, restoring natural habitats and sequestering carbon.
+                </p>
               </div>
-              {featuredTask ? (
-                <div className="mt-5 space-y-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-2xl font-semibold text-white">{featuredTask.name}</h3>
-                    <Badge>{featuredTask.category}</Badge>
-                  </div>
-                  <p className="text-sm leading-6 text-slate-400">{featuredTask.description}</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
-                        Base reward
-                      </p>
-                      <p className="mt-3 text-xl font-semibold text-white">
-                        {featuredTask.baseReward} INITIA
-                      </p>
+              
+              <div className="pt-8">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="relative h-4 w-4">
+                      <Image
+                        src={imgImpactIcon1}
+                        alt="Impact"
+                        fill
+                        className="object-contain"
+                      />
                     </div>
-                    <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
-                        Yield multiplier
-                      </p>
-                      <p className="mt-3 text-xl font-semibold text-emerald-300">
-                        x{featuredTask.bonusMultiplier.toFixed(2)}
-                      </p>
-                    </div>
+                    <span
+                      className="text-[#3b6934]"
+                      style={{
+                        fontFamily: "var(--font-heading)",
+                        fontSize: "14px",
+                        fontWeight: "600"
+                      }}
+                    >
+                      High Impact
+                    </span>
                   </div>
-                  <Link
-                    href={`/verification?taskId=${featuredTask.id}`}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-300"
+                  <span
+                    className="text-[#5a6061]"
+                    style={{
+                      fontFamily: "var(--font-heading)",
+                      fontSize: "14px",
+                      fontWeight: "400"
+                    }}
                   >
-                    Open verification flow
-                    <ArrowRight size={16} />
-                  </Link>
+                    +500 Points
+                  </span>
                 </div>
-              ) : (
-                <p className="mt-4 text-sm text-slate-400">Loading mission profile...</p>
-              )}
+              </div>
             </div>
           </div>
-        </section>
 
-        <section className="flex flex-wrap items-center gap-3">
-          <div className="mr-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
-            <Filter size={15} />
-            Filter by category
-          </div>
-          {categories.map((category) => (
-            <button
-              key={category}
-              type="button"
-              onClick={() => setSelectedCategory(category)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                selectedCategory === category
-                  ? "bg-emerald-300 text-slate-950"
-                  : "border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {category === "all" ? "All missions" : category}
-            </button>
-          ))}
-        </section>
-
-        {loading && (
-          <div className="flex justify-center py-16">
-            <div className="h-12 w-12 animate-spin rounded-full border-2 border-emerald-300/20 border-t-emerald-300" />
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-[1.75rem] border border-red-400/20 bg-red-400/10 px-5 py-4 text-sm text-red-100">
-            {error}
-          </div>
-        )}
-
-        {!loading && !error && (
-          <section className="grid gap-5 xl:grid-cols-2">
-            {filteredTasks.map((task) => (
-              <article
-                key={task.id}
-                className="rounded-[1.75rem] border border-white/10 bg-white/[0.06] p-6 shadow-[0_24px_80px_rgba(2,6,23,0.28)]"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h3 className="text-2xl font-semibold text-white">{task.name}</h3>
-                      <Badge>{task.category}</Badge>
+          {/* Small Card 1 - Renewable Energy Audit */}
+          <div className="surface-card col-span-4 row-span-1 isolate overflow-hidden relative rounded-sm">
+            <div className="relative h-64 overflow-hidden z-20">
+              <div className="absolute inset-0">
+                <Image
+                  src={imgSolarPanels}
+                  alt="Solar panels"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="absolute left-6 top-6 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-sm">
+                <p
+                  className="text-[#2d3435]"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    letterSpacing: "0.36px",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  ENERGY
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-white p-8 relative z-10 h-full flex flex-col justify-between">
+              <div className="flex flex-col gap-3">
+                <h2
+                  className="text-[#2d3435]"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: "28px",
+                    fontWeight: "400",
+                    lineHeight: "42px",
+                    letterSpacing: "-0.28px"
+                  }}
+                >
+                  Renewable Energy Audit
+                </h2>
+                <p
+                  className="text-[#5a6061]"
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "16px",
+                    lineHeight: "24px"
+                  }}
+                >
+                  Conduct a comprehensive energy audit of your home or workplace and implement renewable solutions.
+                </p>
+              </div>
+              
+              <div className="pt-8">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="relative h-4 w-4">
+                      <Image
+                        src={imgImpactIcon2}
+                        alt="Impact"
+                        fill
+                        className="object-contain"
+                      />
                     </div>
-                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
-                      {task.description}
-                    </p>
+                    <span
+                      className="text-[#3b6934]"
+                      style={{
+                        fontFamily: "var(--font-heading)",
+                        fontSize: "14px",
+                        fontWeight: "600"
+                      }}
+                    >
+                      Medium Impact
+                    </span>
                   </div>
-                  <div className="rounded-[1.25rem] border border-emerald-300/20 bg-emerald-300/8 px-4 py-3 text-right">
-                    <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
-                      Reward
-                    </p>
-                    <p className="mt-2 text-xl font-semibold text-white">{task.baseReward}</p>
-                    <p className="text-sm text-emerald-300">x{task.bonusMultiplier.toFixed(2)}</p>
-                  </div>
+                  <span
+                    className="text-[#5a6061]"
+                    style={{
+                      fontFamily: "var(--font-heading)",
+                      fontSize: "14px",
+                      fontWeight: "400"
+                    }}
+                  >
+                    +250 Points
+                  </span>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-white/8 pt-5">
-                  <p className="max-w-xl text-xs uppercase tracking-[0.28em] text-emerald-300">
-                    {task.verificationHint}
-                  </p>
-                  <Link href={`/verification?taskId=${task.id}`}>
-                    <Button size="sm">
-                      Start verification
-                      <ArrowRight size={15} />
-                    </Button>
-                  </Link>
+          {/* Small Card 2 - Composting Workshop */}
+          <div className="surface-card col-span-4 row-span-2 isolate overflow-hidden relative rounded-sm">
+            <div className="relative h-64 overflow-hidden z-20">
+              <div className="absolute inset-0">
+                <Image
+                  src={imgSolarPanels}
+                  alt="Composting"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="absolute left-6 top-6 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-sm">
+                <p
+                  className="text-[#2d3435]"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    letterSpacing: "0.36px",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  WASTE
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-white p-8 relative z-10 h-full flex flex-col justify-between">
+              <div className="flex flex-col gap-3">
+                <h2
+                  className="text-[#2d3435]"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: "28px",
+                    fontWeight: "400",
+                    lineHeight: "42px",
+                    letterSpacing: "-0.28px"
+                  }}
+                >
+                  Composting Workshop
+                </h2>
+                <p
+                  className="text-[#5a6061]"
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "16px",
+                    lineHeight: "24px"
+                  }}
+                >
+                  Learn and implement sustainable waste management through community composting initiatives.
+                </p>
+              </div>
+              
+              <div className="pt-8">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="relative h-4 w-4">
+                      <Image
+                        src={imgImpactIcon3}
+                        alt="Impact"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                    <span
+                      className="text-[#3b6934]"
+                      style={{
+                        fontFamily: "var(--font-heading)",
+                        fontSize: "14px",
+                        fontWeight: "600"
+                      }}
+                    >
+                      Medium Impact
+                    </span>
+                  </div>
+                  <span
+                    className="text-[#5a6061]"
+                    style={{
+                      fontFamily: "var(--font-heading)",
+                      fontSize: "14px",
+                      fontWeight: "400"
+                    }}
+                  >
+                    +200 Points
+                  </span>
                 </div>
-              </article>
-            ))}
-          </section>
-        )}
+              </div>
+            </div>
+          </div>
+
+          {/* Medium Card - Support Local Agriculture */}
+          <div className="surface-card col-span-8 row-span-2 isolate overflow-hidden relative rounded-sm">
+            <div className="relative h-64 overflow-hidden z-20">
+              <div className="absolute inset-0">
+                <Image
+                  src={imgVegetables}
+                  alt="Local vegetables"
+                  fill
+                  className="object-cover"
+                  style={{ objectPosition: "left center" }}
+                />
+              </div>
+            </div>
+            
+            <div className="bg-white p-8 relative z-10 h-full flex flex-col justify-between">
+              <div className="flex flex-col gap-3">
+                <div className="surface-muted inline-flex px-3 py-1 rounded-sm">
+                  <p
+                    className="text-[#2d3435]"
+                    style={{
+                      fontFamily: "var(--font-heading)",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      letterSpacing: "0.36px",
+                      textTransform: "uppercase"
+                    }}
+                  >
+                    COMMUNITY
+                  </p>
+                </div>
+                
+                <h2
+                  className="text-[#2d3435] pt-1"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: "28px",
+                    fontWeight: "400",
+                    lineHeight: "42px",
+                    letterSpacing: "-0.28px"
+                  }}
+                >
+                  Support Local Agriculture
+                </h2>
+                <p
+                  className="text-[#5a6061]"
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "16px",
+                    lineHeight: "24px"
+                  }}
+                >
+                  Commit to purchasing seasonal produce from local farmers markets for one month to reduce transportation emissions and support the local economy.
+                </p>
+              </div>
+              
+              <div className="pt-8">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="relative h-5 w-4.5">
+                      <Image
+                        src={imgImpactIcon4}
+                        alt="Impact"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                    <span
+                      className="text-[#3b6934]"
+                      style={{
+                        fontFamily: "var(--font-heading)",
+                        fontSize: "14px",
+                        fontWeight: "600"
+                      }}
+                    >
+                      Ongoing
+                    </span>
+                  </div>
+                  <span
+                    className="text-[#5a6061]"
+                    style={{
+                      fontFamily: "var(--font-heading)",
+                      fontSize: "14px",
+                      fontWeight: "400"
+                    }}
+                  >
+                    +300 Points
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </ProductShell>
   );

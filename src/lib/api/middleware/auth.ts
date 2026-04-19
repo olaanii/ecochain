@@ -8,7 +8,7 @@ export type AuthContext = {
   userId: string;
   clerkId: string;
   walletAddress?: string;
-  role: "public" | "authenticated" | "admin" | "owner";
+  role: "public" | "user" | "sponsor" | "admin" | "owner";
 };
 
 export type AuthenticatedRequest = NextRequest & {
@@ -39,13 +39,18 @@ export async function authMiddleware(
       };
     }
 
-    // Determine user role based on userId or database lookup
-    // For now, default to "authenticated"
-    // In production, fetch from database or session
-    const role: AuthContext["role"] = "authenticated";
+    // Resolve the DB role for this Clerk user. Fall back to "user" if the
+    // row does not exist yet (pre-onboarding) so routes can distinguish
+    // "no DB record" from "real account".
+    const dbUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { id: true, role: true },
+    });
+
+    const role = ((dbUser?.role as AuthContext["role"]) || "user");
 
     const authContext: AuthContext = {
-      userId,
+      userId: dbUser?.id ?? userId,
       clerkId: userId,
       role,
     };
@@ -79,10 +84,17 @@ export async function optionalAuthMiddleware(
       return { auth: undefined };
     }
 
+    const dbUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { id: true, role: true },
+    });
+
+    const role = ((dbUser?.role as AuthContext["role"]) || "user");
+
     const authContext: AuthContext = {
-      userId,
+      userId: dbUser?.id ?? userId,
       clerkId: userId,
-      role: "authenticated",
+      role,
     };
 
     return { auth: authContext };
@@ -124,7 +136,7 @@ export async function requireAuth(
   return {
     id: user.id,
     clerkId: user.clerkId,
-    role: (user.role as AuthContext["role"]) || "authenticated",
+    role: (user.role as AuthContext["role"]) || "user",
   };
 }
 
@@ -193,25 +205,31 @@ export function rbacMiddleware(
 }
 
 /**
- * Compose multiple middleware functions
+ * Compose multiple middleware functions.
+ *
+ * Each step receives the original request plus the accumulated `AuthContext`
+ * from any prior step, so later middleware (e.g. wallet validation, RBAC)
+ * can build on earlier results.
  */
 export async function composeMiddleware(
   request: NextRequest,
-  middlewares: Array<(req: NextRequest) => Promise<any>>,
+  middlewares: Array<
+    (req: NextRequest, ctx?: AuthContext) => Promise<{ auth?: AuthContext; error?: NextResponse }>
+  >,
 ): Promise<{ auth?: AuthContext; error?: NextResponse }> {
-  let result: any = { auth: undefined };
+  let authContext: AuthContext | undefined;
 
   for (const middleware of middlewares) {
-    const middlewareResult = await middleware(request);
+    const middlewareResult = await middleware(request, authContext);
 
     if (middlewareResult.error) {
-      return middlewareResult;
+      return { auth: authContext, error: middlewareResult.error };
     }
 
     if (middlewareResult.auth) {
-      result.auth = middlewareResult.auth;
+      authContext = middlewareResult.auth;
     }
   }
 
-  return result;
+  return { auth: authContext };
 }

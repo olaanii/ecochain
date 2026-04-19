@@ -1,21 +1,22 @@
-const imgHeroArtwork = "http://localhost:3845/assets/48de6b5a4825ba773f4dc98de7593f7db0c84015.png";
-const imgBackdropArtwork = "http://localhost:3845/assets/bf93de5fc78e247aa5b31957951d2690f83f4a2e.png";
-const imgContainer = "http://localhost:3845/assets/364344d35a170a5d87921de3c3f5a5839122dc21.svg";
-const imgContainer1 = "http://localhost:3845/assets/612ac778ba28da0dff3b6a8a2cabcaf76f03df47.svg";
-const imgContainer2 = "http://localhost:3845/assets/de473ae280d8da11be8f5cde043f2d76bb12a82e.svg";
-const imgContainer3 = "http://localhost:3845/assets/60bd9a5a5cd1d267825d585f5d9131fe8d54e356.svg";
-const imgContainer4 = "http://localhost:3845/assets/c3002091aa4f014ed199f9fcded7ee0e3a8a5dc8.svg";
-const imgContainer5 = "http://localhost:3845/assets/1a7ffb7d02cd3fd9bb29721715ac506b69f44933.svg";
-const imgContainer6 = "http://localhost:3845/assets/eb4bb9a0beac56121e6f3c4bec4316b51f8d52fc.svg";
-const imgContainer7 = "http://localhost:3845/assets/6715b89654f389fd00c5c9cb54d85558c1d4e460.svg";
-const imgContainer8 = "http://localhost:3845/assets/770cee5246948d380264f63104a2a3e45d797acd.svg";
-const imgContainer9 = "http://localhost:3845/assets/bcf63fc44592f706a9d52a0f56648ac86e31fe02.svg";
-const imgContainer10 = "http://localhost:3845/assets/ee3a9d0bf7db807a7b3e6411a2944a8e2cd52329.svg";
-const imgContainer11 = "http://localhost:3845/assets/4fbdb9792933aa0da1d4cb660237d69e4a024678.svg";
-const imgContainer12 = "http://localhost:3845/assets/ea65d6d649132d4783969a18ea5ea5acd3747009.svg";
-const imgContainer13 = "http://localhost:3845/assets/30ea0da53d42e804dde60b72bc3da5e2dfdbce2b.svg";
-const imgContainer14 = "http://localhost:3845/assets/40f5c59e75cbedf5798448047732bde12f6a4eb6.svg";
-const imgContainer15 = "http://localhost:3845/assets/6138582eb04f51ea8088116fa2b601a4491954b0.svg";
+// Placeholder icons - replace with actual SVG components or icon library
+const imgHeroArtwork = "";
+const imgBackdropArtwork = "";
+const imgContainer = "";
+const imgContainer1 = "";
+const imgContainer2 = "";
+const imgContainer3 = "";
+const imgContainer4 = "";
+const imgContainer5 = "";
+const imgContainer6 = "";
+const imgContainer7 = "";
+const imgContainer8 = "";
+const imgContainer9 = "";
+const imgContainer10 = "";
+const imgContainer11 = "";
+const imgContainer12 = "";
+const imgContainer13 = "";
+const imgContainer14 = "";
+const imgContainer15 = "";
 
 export default function InitiaBridgeInterface() {
   return (

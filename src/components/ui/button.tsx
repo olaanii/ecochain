@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useState, useCallback } from "react";
 import clsx from "clsx";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -7,6 +8,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
   icon?: ReactNode;
   iconPosition?: 'left' | 'right';
+  cooldownMs?: number;
+  showCooldownTimer?: boolean;
 }
 
 const variantStyles = {
@@ -18,10 +21,10 @@ const variantStyles = {
 };
 
 const sizeStyles = {
-  sm: "px-3 py-1.5 text-xs",
-  md: "px-4 py-2 text-sm",
-  lg: "px-6 py-3 text-base",
-  xl: "px-8 py-4 text-lg"
+  sm: "px-4 py-2 text-xs min-h-[36px] md:min-h-[36px]", // Touch-friendly minimum height
+  md: "px-5 py-2.5 text-sm min-h-[44px]", // Touch-friendly minimum height (44px)
+  lg: "px-6 py-3 text-base min-h-[48px]", // Touch-friendly minimum height
+  xl: "px-8 py-4 text-lg min-h-[52px]" // Touch-friendly minimum height
 };
 
 export function Button({
@@ -34,16 +37,47 @@ export function Button({
   children,
   disabled,
   type = "button",
+  cooldownMs = 0,
+  showCooldownTimer = false,
+  onClick,
   ...rest
 }: ButtonProps) {
-  const isDisabled = disabled || loading;
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const isDisabled = disabled || loading || cooldownRemaining > 0;
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    if (cooldownRemaining > 0 || loading) return;
+
+    if (onClick) {
+      onClick(e);
+    }
+
+    if (cooldownMs > 0) {
+      setCooldownRemaining(cooldownMs);
+      const interval = setInterval(() => {
+        setCooldownRemaining((prev) => {
+          if (prev <= 100) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 100;
+        });
+      }, 100);
+    }
+  }, [onClick, cooldownMs, cooldownRemaining, loading]);
+
+  const formatCooldown = (ms: number) => {
+    const seconds = Math.ceil(ms / 1000);
+    return `${seconds}s`;
+  };
 
   return (
     <button
       type={type}
       disabled={isDisabled}
+      onClick={handleClick}
       className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-full border font-semibold transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-full border font-semibold transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95 touch-manipulation",
         variantStyles[variant],
         sizeStyles[size],
         !isDisabled && "hover:translate-y-[-1px]",
@@ -73,8 +107,11 @@ export function Button({
           />
         </svg>
       )}
+      {!loading && cooldownRemaining > 0 && showCooldownTimer && (
+        <span className="text-xs opacity-75">{formatCooldown(cooldownRemaining)}</span>
+      )}
       {!loading && icon && iconPosition === 'left' && icon}
-      {children}
+      {cooldownRemaining > 0 && showCooldownTimer ? formatCooldown(cooldownRemaining) : children}
       {!loading && icon && iconPosition === 'right' && icon}
     </button>
   );

@@ -1,8 +1,8 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Protected routes that require authentication
+// Routes that require authentication
 const protectedRoutes = [
   "/dashboard",
   "/verification",
@@ -12,28 +12,36 @@ const protectedRoutes = [
   "/api/bridge",
 ];
 
-// Public routes don't need explicit listing here because middleware
-// allows all non-protected routes by default.
+const isSponsorRoute = createRouteMatcher(["/sponsor(.*)"]);
+const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
 
 export default clerkMiddleware(async (auth, request: NextRequest) => {
-  const { userId } = await auth();
+  const { userId, sessionClaims } = await auth();
   const { pathname } = request.nextUrl;
 
-  // Check if the current path is a protected route (check this first)
+  // Unauthenticated users on protected routes → landing page
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
   );
-
-  // If it's a protected route and user is not authenticated, redirect to landing page
   if (isProtectedRoute && !userId) {
-    const landingUrl = new URL("/", request.url);
-    return NextResponse.redirect(landingUrl);
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Allow the request to proceed for:
-  // - Authenticated users accessing protected routes
-  // - Anyone accessing non-protected routes
-  // - Any other routes
+  // Role-based portal guards
+  if (userId) {
+    const role =
+      ((sessionClaims?.publicMetadata as Record<string, unknown>)
+        ?.role as string) ?? "user";
+
+    if (isSponsorRoute(request) && role !== "sponsor") {
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
+
+    if (isAdminRoute(request) && role !== "admin") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
+
   return NextResponse.next();
 });
 

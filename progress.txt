@@ -1,0 +1,127 @@
+EcoChain — Phase 6 "live data + realtime" slice
+=================================================
+Session goal: replace mock-driven analytics / leaderboard / governance / bridge
+pages with real Prisma-backed APIs, add a realtime push pipeline, and
+reinstate the notification bell. Kept the edits minimal + in-style with
+"The Quiet Earth" design system.
+
+Done this pass
+--------------
+- Dependencies: recharts, web-push (+ @types/web-push).
+- Realtime:
+  * src/lib/realtime/pubsub.ts — Redis Pub/Sub helper (`publishEvent`,
+    `createSubscriber`, typed `RealtimeChannel`).
+  * src/app/api/events/route.ts — SSE endpoint; heartbeats every 25 s.
+  * src/hooks/use-server-events.ts — client hook with auto-reconnect.
+- Charts:
+  * src/components/charts/index.tsx — Line / Area / Bar / Pie wrappers
+    themed to brand palette.
+- APIs:
+  * /api/analytics/metrics  (aggregated, 30 s Redis cache)
+  * /api/leaderboard        (all / weekly / monthly, region filter,
+                             userId rank resolve, 15 s Redis cache)
+  * /api/governance/proposals  GET + POST (emits `proposal.created`)
+  * /api/governance/vote       POST (emits `proposal.voted`, blocks dupes /
+                                    closed votes, voting power = stake or
+                                    rewards/100 floor)
+  * /api/notifications/subscribe GET/POST/DELETE (VAPID register)
+  * /api/notifications/list   and /read
+- Push infra:
+  * prisma schema: new `PushSubscription` model (+ migration scaffolded
+    at 20260419072715_add_push_subscription — still needs to be applied).
+  * src/lib/notifications/push.ts (sendPushToUser, broadcastPush, auto-prunes
+    410/404 subs).
+  * public/sw.js — minimal service worker.
+  * src/hooks/use-push-subscription.ts, src/components/notifications/
+    push-toggle.tsx, notification-center.tsx.
+  * top-nav-bar.tsx now renders NotificationCenter wired to SSE +
+    /api/notifications/list.
+- Pages rebuilt on top of live APIs:
+  * src/app/analytics/page.tsx + AnalyticsDashboard (charts + CSV export)
+  * src/app/leaderboard/page.tsx + LeaderboardView (scopes, region, share
+    rank, pagination)
+  * src/app/governance/page.tsx + GovernanceView (list, filters, detail,
+    vote buttons, create-proposal modal)
+  * src/app/bridge/page.tsx + BridgeView (form, fee preview, history,
+    active bridge indicator)
+
+Design decisions / deviations from original 6-week plan
+-------------------------------------------------------
+1. Used Server-Sent Events instead of socket.io / ws.
+   Reason: the app runs on Next.js 16 App Router without a custom server.
+   SSE is natively supported by route handlers via ReadableStream, works
+   with Edge/Node runtimes, and scales horizontally through Redis Pub/Sub.
+   Client surface (`useServerEvents`) is identical from a product POV —
+   if true bidirectional channels are needed later, a `/api/ws` with a
+   custom server can be added without touching UI code.
+2. Voting power: uses stakes' amount sum, falls back to rewards/100 to
+   avoid zero-power accounts in testing. Replace with on-chain query
+   once the EcoVerifier read path is wired.
+3. `prisma as any` casts for `pushSubscription` — the repository uses a
+   hand-rolled ambient `@prisma/client` shim (`src/types/prisma-client.d.ts`).
+   Proper typing will come automatically once we drop the shim and rely
+   on the generated client types. Low-priority cleanup.
+
+Still TODO (did not fit this pass)
+----------------------------------
+- Apply the new Prisma migration in the target DB
+  (`pnpm prisma migrate deploy` or run the generated SQL).
+- Generate VAPID keys and set:
+    VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT,
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  (`npx web-push generate-vapid-keys`).
+- Register the service worker from a root client component; currently
+  the push toggle lazily registers it on first subscribe which is fine
+  for most flows but not for background push prior to opt-in.
+- Hook server-side publishEvent() into the existing task/verification/
+  bridge success paths so "live" events actually broadcast during
+  user activity.
+- Unit/integration tests for the new API routes and hooks.
+- Pagination "total count" in /api/leaderboard (currently infers from
+  rows length — good enough for now).
+- Accessibility audit on the three new page components.
+- Remove `src/types/prisma-client.d.ts` once Prisma 7 types are
+  consumed directly.
+
+How to verify
+-------------
+1. `pnpm prisma migrate deploy`
+2. `pnpm dev` → visit /analytics, /leaderboard, /governance, /bridge.
+3. Open two browser tabs on /governance → cast a vote in tab A → tab B
+   should refresh instantly via SSE (no reload).
+4. Click the bell in the top nav → enable notifications (requires VAPID
+   env vars). A POST to /api/notifications/subscribe should succeed and
+   a `PushSubscription` row appear in the DB.
+
+---
+Role-Based UI Refactor — DONE (Apr 19 2026)
+--------------------------------------------
+Infrastructure
+  - src/hooks/use-user-role.ts         reads Clerk publicMetadata.role
+  - src/app/api/me/route.ts            GET/PATCH role, syncs Clerk metadata
+  - src/middleware.ts                  clerkMiddleware guards /sponsor/* and /admin/*
+
+Navigation
+  - side-nav-bar.tsx      role-aware icon sets: user | sponsor | admin
+  - top-nav-bar.tsx       centre links → contextual sub-nav tabs per route
+  - product-shell.tsx     calls useUserRole(), passes role to nav components
+  - sponsor-shell.tsx     new — always role="sponsor"
+  - admin-shell.tsx       new — always role="admin"
+
+Sponsor portal  /sponsor/*
+  layout.tsx · page.tsx · tasks/page.tsx · tasks/create/page.tsx
+  campaigns/page.tsx · analytics/page.tsx · rewards-pool/page.tsx · settings/page.tsx
+
+Admin portal  /admin/*
+  layout.tsx · page.tsx · users/page.tsx · review/page.tsx
+  fraud/page.tsx · analytics/page.tsx · config/page.tsx
+
+Onboarding
+  Step 2 now shows role picker (Individual vs Company/Sponsor).
+  BEGIN calls PATCH /api/me, then redirects to /dashboard or /sponsor.
+
+CSS
+  .input-base utility added to globals.css
+
+DB schema
+  User.role comment updated: user | sponsor | admin | owner (no migration needed)

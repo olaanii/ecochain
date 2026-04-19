@@ -12,7 +12,9 @@ declare module "@prisma/client" {
     redemption: any;
     vote: any;
     proposalExecution: any;
+    pushSubscription: any;
     $connect(): Promise<void>;
+    $transaction<T = any>(queries: any[]): Promise<T>;
     $disconnect(): Promise<void>;
     $queryRaw<T = unknown>(query: TemplateStringsArray, ...values: any[]): Promise<T>;
     constructor(...args: any[]);

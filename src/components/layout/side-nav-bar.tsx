@@ -4,16 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Monitor,
-  ShieldCheck,
-  ArrowLeftRight,
-  Headphones,
-  Plus,
+  Compass,
+  Gift,
+  Clock,
+  BarChart3,
+  ListTodo,
+  Megaphone,
+  Wallet,
   Settings,
-  LogOut,
+  Users,
+  ClipboardCheck,
+  ShieldAlert,
 } from "lucide-react";
 import clsx from "clsx";
 import type { ReactNode } from "react";
+import type { UserRole } from "@/hooks/use-user-role";
 
 interface SideNavItem {
   icon: ReactNode;
@@ -21,137 +26,90 @@ interface SideNavItem {
   href: string;
 }
 
-const sideNavItems: SideNavItem[] = [
-  {
-    icon: <LayoutDashboard className="h-[18px] w-[18px]" />,
-    label: "Overview",
-    href: "/dashboard",
-  },
-  {
-    icon: <Monitor className="h-4 w-5" />,
-    label: "Terminals",
-    href: "/terminals",
-  },
-  {
-    icon: <ShieldCheck className="h-5 w-4" />,
-    label: "Security",
-    href: "/verification",
-  },
-  {
-    icon: <ArrowLeftRight className="h-5 w-[18px]" />,
-    label: "Transactions",
-    href: "/transactions",
-  },
-  {
-    icon: <Headphones className="h-[18px] w-5" />,
-    label: "Support",
-    href: "/support",
-  },
+const userNavItems: SideNavItem[] = [
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", href: "/dashboard" },
+  { icon: <Compass size={17} />, label: "Actions", href: "/discover" },
+  { icon: <Gift size={18} />, label: "Offers", href: "/merchants" },
+  { icon: <Clock size={18} />, label: "History", href: "/rewards" },
+  { icon: <BarChart3 size={18} />, label: "Impact", href: "/analytics" },
 ];
 
+const sponsorNavItems: SideNavItem[] = [
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", href: "/sponsor" },
+  { icon: <ListTodo size={18} />, label: "Tasks", href: "/sponsor/tasks" },
+  { icon: <Megaphone size={18} />, label: "Campaigns", href: "/sponsor/campaigns" },
+  { icon: <BarChart3 size={18} />, label: "Analytics", href: "/sponsor/analytics" },
+  { icon: <Wallet size={18} />, label: "Rewards Pool", href: "/sponsor/rewards-pool" },
+  { icon: <Settings size={18} />, label: "Settings", href: "/sponsor/settings" },
+];
+
+const adminNavItems: SideNavItem[] = [
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", href: "/admin" },
+  { icon: <Users size={18} />, label: "Users", href: "/admin/users" },
+  { icon: <ClipboardCheck size={18} />, label: "Review Queue", href: "/admin/review" },
+  { icon: <ShieldAlert size={18} />, label: "Fraud Analytics", href: "/admin/fraud" },
+  { icon: <BarChart3 size={18} />, label: "Analytics", href: "/admin/analytics" },
+  { icon: <Settings size={18} />, label: "Config", href: "/admin/config" },
+];
+
+const navByRole: Record<UserRole, SideNavItem[]> = {
+  user: userNavItems,
+  owner: userNavItems,
+  sponsor: sponsorNavItems,
+  admin: adminNavItems,
+};
+
+interface SideNavBarProps {
+  role?: UserRole;
+}
+
 /**
- * Shared side navigation bar for the Operator Hub layout.
- * Renders a fixed sidebar with navigation links, a "New Terminal"
- * button, settings, and logout at the bottom.
+ * 80px icon-only sidebar.
+ * Role-aware: renders different nav items for user / sponsor / admin.
+ * Light #e4e9ea background, centered icons with active state scaling.
  */
-export function SideNavBar() {
+export function SideNavBar({ role = "user" }: SideNavBarProps) {
   const pathname = usePathname();
+  const items = navByRole[role] ?? userNavItems;
 
   return (
     <aside
       className={clsx(
-        "fixed left-0 top-0 z-40 flex h-full w-64",
-        "flex-col justify-between",
-        "border-r border-[rgba(73,72,71,0.15)] bg-[#0e0e0e]",
-        "py-6",
+        "fixed left-0 top-0 z-40 hidden md:flex",
+        "h-full w-20 flex-col items-center justify-center",
+        "bg-[#e4e9ea]",
+        "pb-8 pt-20",
       )}
     >
-      {/* Top: Branding */}
-      <div className="px-6 pb-10">
-        <h1
-          className={clsx(
-            "font-['Plus_Jakarta_Sans'] text-lg font-bold",
-            "tracking-tight text-white",
-          )}
-        >
-          Operator Hub
-        </h1>
-        <span
-          className={clsx(
-            "text-[10px] font-medium uppercase",
-            "tracking-widest text-[#adaaaa]",
-          )}
-        >
-          Terminal v2.4
-        </span>
-      </div>
+      <nav className="flex flex-1 flex-col items-center justify-center gap-[52px]">
+        {items.map((item) => {
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/sponsor" &&
+              item.href !== "/admin" &&
+              pathname.startsWith(`${item.href}/`)) ||
+            (item.href === "/sponsor" && pathname === "/sponsor") ||
+            (item.href === "/admin" && pathname === "/admin");
 
-      {/* Middle: Navigation */}
-      <nav className="flex flex-1 flex-col gap-1 px-3">
-        {sideNavItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
               className={clsx(
-                "flex items-center gap-3 rounded-lg px-4 py-3",
-                "text-sm font-medium transition-colors",
+                "flex w-20 items-center justify-center py-5",
+                "transition-all duration-200",
                 isActive
-                  ? [
-                      "border-r-4 border-[#cafd00] bg-[#262626]",
-                      "text-[#f3ffca]",
-                    ]
-                  : "text-[#adaaaa] hover:bg-[#1a1a1a] hover:text-white",
+                  ? "scale-110 text-[#2d3435]"
+                  : "text-[#5a6061] hover:text-[#2d3435]",
               )}
+              title={item.label}
+              aria-label={item.label}
             >
               {item.icon}
-              {item.label}
             </Link>
           );
         })}
       </nav>
-
-      {/* Bottom: Actions */}
-      <div className="px-4">
-        <button
-          className={clsx(
-            "flex w-full items-center justify-center gap-2",
-            "rounded-xl px-4 py-3 text-base font-semibold",
-            "text-[#3a4a00]",
-            "shadow-[0_0_20px_rgba(202,253,0,0.2)]",
-          )}
-          style={{
-            backgroundImage:
-              "linear-gradient(168deg, #f3ffca 0%, #cafd00 100%)",
-          }}
-        >
-          <Plus className="h-3 w-3" />
-          New Terminal
-        </button>
-
-        <div className="mt-5 flex flex-col gap-1">
-          <Link
-            href="/settings"
-            className={clsx(
-              "flex items-center gap-3 rounded-lg px-4 py-2",
-              "text-sm text-[#adaaaa] hover:text-white",
-            )}
-          >
-            <Settings className="h-5 w-5" />
-            Settings
-          </Link>
-          <button
-            className={clsx(
-              "flex items-center gap-3 rounded-lg px-4 py-2",
-              "text-sm text-[#adaaaa] hover:text-white",
-            )}
-          >
-            <LogOut className="h-[18px] w-[18px]" />
-            Logout
-          </button>
-        </div>
-      </div>
     </aside>
   );
 }

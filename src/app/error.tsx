@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import Link from "next/link";
 
 export default function Error({
   error,
@@ -10,36 +12,46 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    console.error("Application error:", error);
   }, [error]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-slate-50">
-      <section className="surface w-full max-w-xl rounded-[2rem] p-8 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-300">
-          App surface error
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-surface)] px-4">
+      <section className="surface-card w-full max-w-xl rounded-2xl p-8 text-center shadow-lg">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-950">
+          <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
+        </div>
+        
+        <h1 className="heading-2 mb-4 text-[var(--color-text-dark)]">
+          Something went wrong
+        </h1>
+        
+        <p className="text-body text-[var(--color-text-muted)] mb-6">
+          {error.message || "An unexpected error occurred. Please try again or contact support if the issue persists."}
         </p>
-        <h1 className="mt-4 text-3xl font-semibold text-white">We hit a runtime issue.</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-300">
-          The setup-gated UI caught a client-side error before it could take the whole page down.
-          Check your Clerk and Initia env vars, then try again.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        
+        {process.env.NODE_ENV === "development" && error.digest && (
+          <p className="text-xs text-[var(--color-text-muted)] mb-6 font-mono">
+            Error ID: {error.digest}
+          </p>
+        )}
+        
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <button
             type="button"
             onClick={reset}
-            className="rounded-full bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200"
+            className="btn-primary inline-flex items-center gap-2"
           >
+            <RefreshCw className="h-4 w-4" />
             Try again
           </button>
-          <a
-            href="https://docs.initia.xyz/hackathon/get-started"
-            className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-emerald-300/60 hover:text-white"
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            href="/"
+            className="btn-outline inline-flex items-center gap-2"
           >
-            Initia docs
-          </a>
+            <Home className="h-4 w-4" />
+            Go home
+          </Link>
         </div>
       </section>
     </main>

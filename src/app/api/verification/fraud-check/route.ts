@@ -24,6 +24,7 @@ import { z } from "zod";
  */
 
 const FraudCheckSchema = z.object({
+  verificationId: z.string().min(1),
   taskId: z.string().min(1),
   proofHash: z.string().regex(/^0x[a-f0-9]{64}$/i),
   metadata: z
@@ -50,7 +51,12 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     request,
     auth!.userId,
   );
-  if (!allowed) return rateLimitResponse;
+  if (!allowed) {
+    return (
+      rateLimitResponse ??
+      NextResponse.json({ error: "Too many requests" }, { status: 429 })
+    );
+  }
 
   // 3. Validate input
   const { data, error: validationError } = await validationMiddleware(
@@ -58,6 +64,9 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     FraudCheckSchema,
   );
   if (validationError) return validationError;
+  if (!data) {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
 
   // 4. Perform fraud detection
   const fraudResult = await detectFraud(
@@ -71,7 +80,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   if (fraudResult.isFlagged) {
     try {
       const reviewItem = await addToReviewQueue(
-        `verification-${Date.now()}`,
+        data.verificationId,
         auth!.userId,
         fraudResult.fraudScore,
         fraudResult.reason || "Fraud indicators detected",
@@ -90,7 +99,16 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       );
     } catch (error) {
       console.error("Failed to add to review queue:", error);
-      // Continue anyway, just don't return review ID
+      return NextResponse.json(
+        {
+          fraudScore: fraudResult.fraudScore,
+          isFlagged: true,
+          indicators: fraudResult.indicators,
+          reason: fraudResult.reason,
+          message: "Submission flagged; review queue unavailable",
+        },
+        { status: 202 },
+      );
     }
   }
 
