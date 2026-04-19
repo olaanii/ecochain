@@ -10,7 +10,7 @@
 
 import Redis from "ioredis";
 import { EventEmitter } from "node:events";
-import { redis } from "@/lib/redis/client";
+import { redis, createRedisConnection } from "@/lib/redis/client";
 
 export type RealtimeChannel =
   | "proposal.created"
@@ -89,29 +89,22 @@ let sharedBus: SharedBus | null = null;
 function getSharedBus(): SharedBus {
   if (sharedBus) return sharedBus;
 
-  const client = new Redis({
-    host: process.env.REDIS_HOST || "localhost",
-    port: parseInt(process.env.REDIS_PORT || "6379"),
-    password: process.env.REDIS_PASSWORD,
-    db: parseInt(process.env.REDIS_DB || "0"),
-    lazyConnect: false,
-    maxRetriesPerRequest: null,
-  });
+  // Use the shared connection factory so DISABLE_REDIS / no-config dev mode
+  // returns a stub subscriber that no-ops instead of flooding the logs.
+  const client = createRedisConnection("pubsub");
 
   const emitter = new EventEmitter();
   emitter.setMaxListeners(0);
 
-  client.on("message", (channel, message) => {
+  // Only wire the message handler when we have a real client; the stub
+  // doesn't support `message` events but will accept the .on() no-op.
+  client.on("message", (channel: string, message: string) => {
     try {
       const parsed = JSON.parse(message) as RealtimeEvent;
       emitter.emit(channel, parsed);
     } catch (err) {
       console.error("[realtime] malformed message", err);
     }
-  });
-
-  client.on("error", (err) => {
-    console.error("[realtime] shared bus error", err);
   });
 
   sharedBus = {

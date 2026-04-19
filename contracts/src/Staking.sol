@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title Staking
@@ -13,6 +14,8 @@ import "@openzeppelin/contracts/security/Pausable.sol";
  * Requirements: 8.1, 8.2, 8.3, 8.4, 8.6, 8.8, 9.1, 9.3, 10.1, 10.2, 10.3, 10.4, 30.1, 30.6, 30.7
  */
 contract Staking is ReentrancyGuard, Ownable, Pausable {
+    using SafeERC20 for IERC20;
+
     // ============ Constants ============
     
     uint256 public constant MINIMUM_STAKE = 100e18; // 100 ECO (18 decimals)
@@ -120,11 +123,8 @@ contract Staking is ReentrancyGuard, Ownable, Pausable {
         // Get APY for duration
         uint256 apy = getAPYForDuration(durationDays);
         
-        // Transfer tokens from user to contract
-        require(
-            ecoToken.transferFrom(msg.sender, address(this), amount),
-            "Staking: Token transfer failed"
-        );
+        // Transfer tokens from user to contract (SafeERC20 reverts on failure).
+        ecoToken.safeTransferFrom(msg.sender, address(this), amount);
         
         // Create stake record
         stakeId = stakeIdCounter++;
@@ -189,11 +189,8 @@ contract Staking is ReentrancyGuard, Ownable, Pausable {
         stakeDetails.withdrawalAmount = totalAmount;
         stakeDetails.accruedRewards = rewards;
         
-        // Transfer tokens to user
-        require(
-            ecoToken.transfer(msg.sender, totalAmount),
-            "Staking: Token transfer failed"
-        );
+        // Transfer tokens to user (SafeERC20 reverts on failure).
+        ecoToken.safeTransfer(msg.sender, totalAmount);
         
         // Emit event
         emit Unstaked(
@@ -366,11 +363,14 @@ contract Staking is ReentrancyGuard, Ownable, Pausable {
     /**
      * @dev Recover tokens sent to contract by mistake
      */
-    function recoverTokens(address token, uint256 amount) 
-        external 
-        onlyOwner 
+    function recoverTokens(address token, uint256 amount)
+        external
+        onlyOwner
     {
+        // The staking token is locked: only non-ECO assets accidentally sent
+        // to the contract can be recovered. This prevents the owner from ever
+        // touching principal or accrued rewards.
         require(token != address(ecoToken), "Staking: Cannot recover staking token");
-        require(IERC20(token).transfer(msg.sender, amount), "Staking: Transfer failed");
+        IERC20(token).safeTransfer(msg.sender, amount);
     }
 }

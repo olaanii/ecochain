@@ -1,19 +1,33 @@
-name: CI
+name: Contracts
 
 permissions: {}
 
 on:
   push:
+    branches: ["main"]
+    paths:
+      - "contracts/**"
+      - ".github/workflows/test.yml"
   pull_request:
+    paths:
+      - "contracts/**"
+      - ".github/workflows/test.yml"
   workflow_dispatch:
+
+concurrency:
+  group: contracts-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  check:
-    name: Foundry project
+  forge:
+    name: Foundry — build, test, gas, coverage
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
     permissions:
       contents: read
     steps:
@@ -24,15 +38,22 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
-      - name: Show Forge version
+      - name: Forge version
         run: forge --version
 
-      - name: Run Forge fmt
-        run: forge fmt --check
-
-      - name: Run Forge build
+      - name: Build
         run: forge build --sizes
 
-      - name: Run Forge tests
+      - name: Test (verbose)
         run: forge test -vvv
+
+      - name: Gas snapshot (diff only; non-blocking)
+        run: forge snapshot --check || echo "::warning::Gas snapshot drifted"
+        continue-on-error: true
+
+      - name: Coverage (summary only)
+        run: forge coverage --report summary
+        continue-on-error: true

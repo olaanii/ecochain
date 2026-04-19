@@ -4,10 +4,25 @@ on:
   push:
     branches: ["main"]
   pull_request:
-    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://ecochain:ecochain@localhost:5432/ecochain
+  # Force the Redis stub in CI — we don't provision Upstash for every PR.
+  DISABLE_REDIS: "1"
+  # Skip interwovenkit postinstall patch from touching network during CI.
+  CI: "true"
 
 jobs:
-  lint-test:
+  web:
+    name: Web app — lint, test, build
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -27,26 +42,43 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          persist-credentials: false
           submodules: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: pnpm
+
       - name: Install dependencies
-        run: npm ci
-      - name: Set DATABASE_URL
-        run: echo "DATABASE_URL=postgresql://ecochain:ecochain@localhost:5432/ecochain" >> $GITHUB_ENV
+        run: pnpm install --frozen-lockfile
+
       - name: Generate Prisma client
-        run: npm run prisma:generate
-      - name: Push Prisma schema
-        run: npm run db:push
-      - name: Lint
-        run: npm run lint
-      - name: Build verification bundle
-        run: npm run build:verification
-      - name: Run unit tests
-        run: npm run test:unit
-      - name: Seed demo data
-        run: npm run db:seed
-      - name: Build app
-        run: npm run build
+        run: pnpm run prisma:generate
+
+      - name: Apply Prisma schema
+        run: pnpm run db:push
+
+      - name: Lint / typecheck (verification + seed bundles)
+        run: pnpm run lint
+
+      - name: Unit tests
+        run: pnpm run test:unit
+
+      - name: Integration tests (Jest)
+        run: pnpm run test:integration
+
+      - name: Build Next.js app
+        run: pnpm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          # Dummy public vars so `next build` doesn't fail on required env.
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci_placeholder
+          CLERK_SECRET_KEY: sk_test_ci_placeholder

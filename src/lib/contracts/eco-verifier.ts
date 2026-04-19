@@ -1,275 +1,192 @@
-import { PublicClient, WalletClient, keccak256, toHex } from "viem";
-import { EcoVerifierContract } from "@/lib/blockchain/contracts";
-
 /**
- * EcoVerifier Contract Interface
- * 
- * Requirement 6.3
- * - Create TypeScript interface for EcoVerifier contract
- * - Implement submitProof() write function
- * - Implement tasks() read function
- * - Implement usedProofHashes() read function
- * - Add proof hash uniqueness validation before submission
- * - Add timestamp validation (within 48 hours)
- * - Requirements: 2.3, 2.4, 2.5, 5.5, 5.6
+ * EcoVerifier client wrapper (hardened-contract revision)
+ *
+ * After the contract hardening pass, `submitProof` is only callable with an
+ * EIP-712 oracle signature. The server produces the signature via
+ * `/api/verification/:id/attestation`; this wrapper is the thin read/write
+ * surface used by higher-level hooks (see `use-eco-claim.ts`).
+ *
+ * What changed vs the old wrapper:
+ *  - `taskId` is now `0x${string}` (bytes32) instead of `bigint`.
+ *  - `submitProof` takes the full (taskId, proofHash, reward, nonce,
+ *    deadline, signature) tuple.
+ *  - `tasks()` returns the `{baseReward, maxReward, active, exists}` struct.
+ *  - Removed legacy helpers (`validateTimestampRange`, `createProofSubmission`)
+ *    — all replay/timestamp logic lives in the contract + oracle signer now.
+ *
+ * Requirements (post-hardening): 2.3, 2.4, 2.5, 5.5, 5.6, 29.8.
  */
 
+import type { PublicClient, WalletClient, Hex } from "viem";
+import { getAddress, keccak256, toBytes } from "viem";
+import { EcoVerifierContract } from "@/lib/blockchain/contracts";
+
+// --------------------------------------------------------------------------
+// Types
+// --------------------------------------------------------------------------
+
 export interface TaskData {
-  id: bigint;
-  name: string;
-  description: string;
+  /** On-chain bytes32 id (usually `keccak256(slug)`). */
+  id: Hex;
   baseReward: bigint;
-  verificationMethod: string;
+  maxReward: bigint;
   active: boolean;
+  exists: boolean;
 }
 
 export interface ProofSubmissionData {
-  taskId: bigint;
-  proofHash: string;
-  timestamp: bigint;
+  taskId: Hex;
+  proofHash: Hex;
+  reward: bigint;
+  nonce: bigint;
+  deadline: bigint;
+  signature: Hex;
 }
 
 export interface EcoVerifierInterface {
-  // Read functions
-  tasks(taskId: bigint): Promise<TaskData>;
-  usedProofHashes(proofHash: string): Promise<boolean>;
-  getTaskCount(): Promise<bigint>;
+  // Reads
+  tasks(taskId: Hex): Promise<TaskData>;
+  usedProofHashes(proofHash: Hex): Promise<boolean>;
+  nonces(user: `0x${string}`): Promise<bigint>;
+  isOracle(account: `0x${string}`): Promise<boolean>;
 
-  // Write functions
-  submitProof(
-    taskId: bigint,
-    proofHash: string,
-    timestamp: bigint,
-  ): Promise<`0x${string}`>;
+  // Writes
+  submitProof(data: ProofSubmissionData): Promise<Hex>;
+}
 
-  // Validation functions
-  validateProofHash(proofHash: string): Promise<boolean>;
-  validateTimestamp(timestamp: bigint): Promise<boolean>;
-  validateProofUniqueness(proofHash: string): Promise<boolean>;
+// --------------------------------------------------------------------------
+// Helpers
+// --------------------------------------------------------------------------
 
-  // Gas estimation
-  estimateSubmitProof(
-    taskId: bigint,
-    proofHash: string,
-    timestamp: bigint,
-  ): Promise<bigint>;
+/** Derive the on-chain bytes32 taskId from a human-readable slug. */
+export function taskIdFromSlug(slug: string): Hex {
+  if (!slug) throw new Error("taskIdFromSlug: slug is required");
+  return keccak256(toBytes(slug));
 }
 
 /**
- * Create EcoVerifier contract interface
- * @param publicClient - Viem public client for reads
- * @param walletClient - Viem wallet client for writes
- * @returns EcoVerifier contract interface
+ * Validate that a string looks like a bytes32 hex value. Accepts both
+ * `0x`-prefixed and unprefixed inputs and normalizes to lowercase `0x…`.
+ */
+export function toBytes32(input: string): Hex {
+  const hex = input.startsWith("0x") ? input : `0x${input}`;
+  if (!/^0x[0-9a-fA-F]{64}$/.test(hex)) {
+    throw new Error(`Not a valid bytes32 value: ${input}`);
+  }
+  return hex.toLowerCase() as Hex;
+}
+
+// --------------------------------------------------------------------------
+// Factory
+// --------------------------------------------------------------------------
+
+/**
+ * Build a thin EcoVerifier interface over a viem public + wallet client.
+ * Read-only methods use `publicClient`; writes use `walletClient`'s account.
  */
 export function createEcoVerifierInterface(
   publicClient: PublicClient,
   walletClient: WalletClient,
 ): EcoVerifierInterface {
-  const contractAddress = EcoVerifierContract.address;
+  const address = EcoVerifierContract.address;
   const abi = EcoVerifierContract.abi;
 
-  return {
-    // Read functions
-    async tasks(taskId: bigint): Promise<TaskData> {
-      try {
-        const task = await publicClient.readContract({
-          address: contractAddress,
-          abi,
-          functionName: "tasks",
-          args: [taskId],
-        });
-
-        // Parse task data based on contract structure
-        const taskArray = task as any[];
-        return {
-          id: taskArray[0] as bigint,
-          name: taskArray[1] as string,
-          description: taskArray[2] as string,
-          baseReward: taskArray[3] as bigint,
-          verificationMethod: taskArray[4] as string,
-          active: taskArray[5] as boolean,
-        };
-      } catch (error) {
-        console.error("Failed to read task:", error);
-        throw error;
-      }
-    },
-
-    async usedProofHashes(proofHash: string): Promise<boolean> {
-      try {
-        const used = await publicClient.readContract({
-          address: contractAddress,
-          abi,
-          functionName: "usedProofHashes",
-          args: [proofHash],
-        });
-        return used as boolean;
-      } catch (error) {
-        console.error("Failed to check proof hash usage:", error);
-        throw error;
-      }
-    },
-
-    async getTaskCount(): Promise<bigint> {
-      try {
-        const count = await publicClient.readContract({
-          address: contractAddress,
-          abi,
-          functionName: "getTaskCount",
-          args: [],
-        });
-        return count as bigint;
-      } catch (error) {
-        console.error("Failed to get task count:", error);
-        throw error;
-      }
-    },
-
-    // Write functions
-    async submitProof(
-      taskId: bigint,
-      proofHash: string,
-      timestamp: bigint,
-    ): Promise<`0x${string}`> {
-      try {
-        // Validate before submission
-        await this.validateProofHash(proofHash);
-        await this.validateTimestamp(timestamp);
-        await this.validateProofUniqueness(proofHash);
-
-        const hash = await walletClient.writeContract({
-          address: contractAddress,
-          abi,
-          functionName: "submitProof",
-          args: [taskId, proofHash, timestamp],
-        });
-
-        return hash;
-      } catch (error) {
-        console.error("Failed to submit proof:", error);
-        throw error;
-      }
-    },
-
-    // Validation functions
-    async validateProofHash(proofHash: string): Promise<boolean> {
-      // Validate proof hash format (should be 64 hex characters)
-      if (!/^0x[a-f0-9]{64}$/i.test(proofHash)) {
-        throw new Error("Invalid proof hash format. Must be 64 hex characters.");
-      }
-      return true;
-    },
-
-    async validateTimestamp(timestamp: bigint): Promise<boolean> {
-      const now = BigInt(Math.floor(Date.now() / 1000));
-      const fortyEightHoursAgo = now - BigInt(48 * 60 * 60);
-
-      // Timestamp must be within 48 hours
-      if (timestamp > now) {
-        throw new Error("Timestamp cannot be in the future");
-      }
-
-      if (timestamp < fortyEightHoursAgo) {
-        throw new Error("Timestamp must be within 48 hours");
-      }
-
-      return true;
-    },
-
-    async validateProofUniqueness(proofHash: string): Promise<boolean> {
-      const used = await this.usedProofHashes(proofHash);
-
-      if (used) {
-        throw new Error("Proof hash already used. Duplicate proofs are not allowed.");
-      }
-
-      return true;
-    },
-
-    // Gas estimation
-    async estimateSubmitProof(
-      taskId: bigint,
-      proofHash: string,
-      timestamp: bigint,
-    ): Promise<bigint> {
-      try {
-        const gas = await publicClient.estimateContractGas({
-          address: contractAddress,
-          abi,
-          functionName: "submitProof",
-          args: [taskId, proofHash, timestamp],
-        });
-        return gas;
-      } catch (error) {
-        console.error("Failed to estimate submitProof gas:", error);
-        throw error;
-      }
-    },
-  };
-}
-
-/**
- * Generate proof hash from proof data
- * @param proofData - Proof data (image, metadata, etc.)
- * @returns Proof hash (keccak256)
- */
-export function generateProofHash(proofData: string | Buffer): string {
-  const data = typeof proofData === "string" ? proofData : proofData.toString("hex");
-  return keccak256(toHex(data));
-}
-
-/**
- * Validate proof hash format
- * @param proofHash - Proof hash to validate
- * @returns True if valid, throws error otherwise
- */
-export function validateProofHashFormat(proofHash: string): boolean {
-  if (!/^0x[a-f0-9]{64}$/i.test(proofHash)) {
-    throw new Error("Invalid proof hash format. Must be 64 hex characters.");
-  }
-  return true;
-}
-
-/**
- * Validate timestamp is within 48 hours
- * @param timestamp - Timestamp in seconds
- * @returns True if valid, throws error otherwise
- */
-export function validateTimestampRange(timestamp: number | bigint): boolean {
-  const now = Math.floor(Date.now() / 1000);
-  const fortyEightHoursAgo = now - 48 * 60 * 60;
-  const timestampNum = typeof timestamp === "bigint" ? Number(timestamp) : timestamp;
-
-  if (timestampNum > now) {
-    throw new Error("Timestamp cannot be in the future");
+  async function tasks(taskId: Hex): Promise<TaskData> {
+    const normalized = toBytes32(taskId);
+    const raw = (await publicClient.readContract({
+      address,
+      abi,
+      functionName: "tasks",
+      args: [normalized],
+    })) as readonly [bigint, bigint, boolean, boolean];
+    return {
+      id: normalized,
+      baseReward: raw[0],
+      maxReward: raw[1],
+      active: raw[2],
+      exists: raw[3],
+    };
   }
 
-  if (timestampNum < fortyEightHoursAgo) {
-    throw new Error("Timestamp must be within 48 hours");
+  async function usedProofHashes(proofHash: Hex): Promise<boolean> {
+    return (await publicClient.readContract({
+      address,
+      abi,
+      functionName: "usedProofHashes",
+      args: [toBytes32(proofHash)],
+    })) as boolean;
   }
 
-  return true;
+  async function nonces(user: `0x${string}`): Promise<bigint> {
+    return (await publicClient.readContract({
+      address,
+      abi,
+      functionName: "nonces",
+      args: [getAddress(user)],
+    })) as bigint;
+  }
+
+  async function isOracle(account: `0x${string}`): Promise<boolean> {
+    const role = (await publicClient.readContract({
+      address,
+      abi,
+      functionName: "ORACLE_ROLE",
+    })) as Hex;
+    return (await publicClient.readContract({
+      address,
+      abi,
+      functionName: "hasRole",
+      args: [role, getAddress(account)],
+    })) as boolean;
+  }
+
+  async function submitProof(data: ProofSubmissionData): Promise<Hex> {
+    if (!walletClient.account) {
+      throw new Error("EcoVerifier.submitProof: wallet account missing");
+    }
+    return (await walletClient.writeContract({
+      account: walletClient.account,
+      chain: walletClient.chain,
+      address,
+      abi,
+      functionName: "submitProof",
+      args: [
+        toBytes32(data.taskId),
+        toBytes32(data.proofHash),
+        data.reward,
+        data.nonce,
+        data.deadline,
+        data.signature,
+      ],
+    })) as Hex;
+  }
+
+  return { tasks, usedProofHashes, nonces, isOracle, submitProof };
 }
 
-/**
- * Create proof submission data
- * @param taskId - Task ID
- * @param proofData - Proof data
- * @returns Proof submission data with hash and timestamp
- */
-export function createProofSubmission(
-  taskId: bigint,
-  proofData: string | Buffer,
-): ProofSubmissionData {
-  const proofHash = generateProofHash(proofData);
-  const timestamp = BigInt(Math.floor(Date.now() / 1000));
+// Legacy named-export aliases — kept so the module still satisfies the
+// `src/lib/contracts/index.ts` re-exports while we phase out callers.
+// These throw loudly so nobody accidentally invokes the removed legacy flow.
 
-  validateProofHashFormat(proofHash);
-  validateTimestampRange(timestamp);
+export function generateProofHash(): never {
+  throw new Error(
+    "generateProofHash has moved — use @/lib/verification/proof-hash or oracle-signer.normalizeProofHash",
+  );
+}
 
-  return {
-    taskId,
-    proofHash,
-    timestamp,
-  };
+export function validateProofHashFormat(hash: string): boolean {
+  // Keep this as a pure-format check; callers may still validate input shape.
+  return /^0x[0-9a-fA-F]{64}$/.test(hash) || /^[0-9a-fA-F]{64}$/.test(hash);
+}
+
+export function validateTimestampRange(): never {
+  throw new Error(
+    "validateTimestampRange is obsolete — the contract enforces `deadline` directly",
+  );
+}
+
+export function createProofSubmission(): never {
+  throw new Error(
+    "createProofSubmission is obsolete — request a signed attestation from /api/verification/:id/attestation",
+  );
 }

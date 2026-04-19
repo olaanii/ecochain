@@ -1,247 +1,175 @@
 [
   {
-    "type": "constructor",
-    "inputs": [
-      {
-        "name": "_ecoToken",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "ecoToken",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract EcoReward"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "owner",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "renounceOwnership",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setEcoToken",
-    "inputs": [
-      {
-        "name": "_ecoToken",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setTask",
-    "inputs": [
-      {
-        "name": "taskId",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "baseReward",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
     "type": "function",
     "name": "submitProof",
+    "stateMutability": "nonpayable",
     "inputs": [
-      {
-        "name": "taskId",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "proofHash",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "timestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+      { "name": "taskId",    "type": "bytes32" },
+      { "name": "proofHash", "type": "bytes32" },
+      { "name": "reward",    "type": "uint256" },
+      { "name": "nonce",     "type": "uint256" },
+      { "name": "deadline",  "type": "uint256" },
+      { "name": "signature", "type": "bytes"   }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "outputs": []
   },
   {
     "type": "function",
-    "name": "tasks",
-    "inputs": [
-      {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "baseReward",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "exists",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "transferOwnership",
-    "inputs": [
-      {
-        "name": "newOwner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "name": "nonces",
+    "stateMutability": "view",
+    "inputs": [{ "name": "user", "type": "address" }],
+    "outputs": [{ "name": "",    "type": "uint256" }]
   },
   {
     "type": "function",
     "name": "usedProofHashes",
-    "inputs": [
-      {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
+    "stateMutability": "view",
+    "inputs": [{ "name": "proofHash", "type": "bytes32" }],
+    "outputs": [{ "name": "",         "type": "bool"    }]
   },
   {
-    "type": "event",
-    "name": "OwnershipTransferred",
+    "type": "function",
+    "name": "tasks",
+    "stateMutability": "view",
+    "inputs": [{ "name": "taskId", "type": "bytes32" }],
+    "outputs": [
+      { "name": "baseReward", "type": "uint256" },
+      { "name": "maxReward",  "type": "uint256" },
+      { "name": "active",     "type": "bool"    },
+      { "name": "exists",     "type": "bool"    }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "ecoToken",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address" }]
+  },
+  {
+    "type": "function",
+    "name": "paused",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bool" }]
+  },
+  {
+    "type": "function",
+    "name": "domainSeparator",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bytes32" }]
+  },
+  {
+    "type": "function",
+    "name": "hashAttestation",
+    "stateMutability": "view",
     "inputs": [
-      {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "newOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
+      { "name": "user",      "type": "address" },
+      { "name": "taskId",    "type": "bytes32" },
+      { "name": "proofHash", "type": "bytes32" },
+      { "name": "reward",    "type": "uint256" },
+      { "name": "nonce",     "type": "uint256" },
+      { "name": "deadline",  "type": "uint256" }
     ],
-    "anonymous": false
+    "outputs": [{ "name": "", "type": "bytes32" }]
+  },
+  {
+    "type": "function",
+    "name": "ORACLE_ROLE",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bytes32" }]
+  },
+  {
+    "type": "function",
+    "name": "hasRole",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "role",    "type": "bytes32" },
+      { "name": "account", "type": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "bool" }]
   },
   {
     "type": "event",
     "name": "ProofSubmitted",
+    "anonymous": false,
     "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "taskId",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
-        "name": "proofHash",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
-        "name": "rewardMinted",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
+      { "name": "user",      "type": "address", "indexed": true  },
+      { "name": "taskId",    "type": "bytes32", "indexed": true  },
+      { "name": "proofHash", "type": "bytes32", "indexed": true  },
+      { "name": "reward",    "type": "uint256", "indexed": false },
+      { "name": "nonce",     "type": "uint256", "indexed": false }
+    ]
   },
   {
     "type": "event",
     "name": "TaskSet",
+    "anonymous": false,
     "inputs": [
-      {
-        "name": "taskId",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
-        "name": "baseReward",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
+      { "name": "taskId",     "type": "bytes32", "indexed": true  },
+      { "name": "baseReward", "type": "uint256", "indexed": false },
+      { "name": "maxReward",  "type": "uint256", "indexed": false },
+      { "name": "active",     "type": "bool",    "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "Paused",
+    "anonymous": false,
+    "inputs": [{ "name": "account", "type": "address", "indexed": false }]
+  },
+  {
+    "type": "event",
+    "name": "Unpaused",
+    "anonymous": false,
+    "inputs": [{ "name": "account", "type": "address", "indexed": false }]
   },
   {
     "type": "error",
-    "name": "OwnableInvalidOwner",
+    "name": "BadSigner",
+    "inputs": [{ "name": "signer", "type": "address" }]
+  },
+  {
+    "type": "error",
+    "name": "ProofReused",
+    "inputs": [{ "name": "proofHash", "type": "bytes32" }]
+  },
+  {
+    "type": "error",
+    "name": "SignatureExpired",
     "inputs": [
-      {
-        "name": "owner",
-        "type": "address",
-        "internalType": "address"
-      }
+      { "name": "deadline", "type": "uint256" },
+      { "name": "nowTs",    "type": "uint256" }
     ]
   },
   {
     "type": "error",
-    "name": "OwnableUnauthorizedAccount",
+    "name": "InvalidNonce",
     "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
+      { "name": "expected", "type": "uint256" },
+      { "name": "provided", "type": "uint256" }
     ]
-  }
+  },
+  {
+    "type": "error",
+    "name": "RewardTooHigh",
+    "inputs": [
+      { "name": "requested", "type": "uint256" },
+      { "name": "cap",       "type": "uint256" }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TaskUnknown",
+    "inputs": [{ "name": "taskId", "type": "bytes32" }]
+  },
+  {
+    "type": "error",
+    "name": "TaskInactive",
+    "inputs": [{ "name": "taskId", "type": "bytes32" }]
+  },
+  { "type": "error", "name": "ZeroReward", "inputs": [] },
+  { "type": "error", "name": "ZeroAddress", "inputs": [] }
 ]

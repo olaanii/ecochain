@@ -3,7 +3,13 @@
  * Exports all cache and Redis functionality
  */
 
-export { redis, checkRedisHealth, disconnectRedis } from "./client";
+export {
+  redis,
+  checkRedisHealth,
+  disconnectRedis,
+  createRedisConnection,
+  isRedisEnabled,
+} from "./client";
 export {
   cacheGet,
   cacheSet,
