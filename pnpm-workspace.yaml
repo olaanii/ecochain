@@ -1,0 +1,27 @@
+packages:
+  - .
+allowBuilds:
+  '1': true
+  '2': true
+  '5': true
+  '6': true
+  ' ': true
+  '@clerk/shared': true
+  '@prisma/engines': true
+  a: true
+  b: true
+  bufferutil: true
+  c: true
+  d: true
+  e: true
+  i: true
+  k: true
+  keccak: true
+  l: true
+  p: true
+  prisma: true
+  s: true
+  sharp: true
+  u: true
+  unrs-resolver: true
+  utf-8-validate: true

@@ -1,0 +1,35 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ecochain
+      POSTGRES_PASSWORD: ecochain
+      POSTGRES_DB: ecochain
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - eco-network
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://f0b7296a7fbd5dfc8e4c31e0266104bf5094d4b31c6dafadce1e54290fdacc8f:sk_9e571QmXbdktonKT3ffdc@pooled.db.prisma.io:5432/postgres?sslmode=require
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZnVuLWNpdmV0LTUzLmNsZXJrLmFjY291bnRzLmRldiQ
+      CLERK_SECRET_KEY: sk_test_ENB7SCWGVHTdmnIQGi0QYwlQfoxQgun8TAzrpWh6fJ
+      NEXT_PUBLIC_INITIA_CHAIN_ID: ecochain105
+      NEXT_PUBLIC_INITIA_ROUTER_API_URL: https://router.initia.xyz
+      NEXT_PUBLIC_INITIA_REGISTRY_URL: https://registry.initia.xyz
+      NEXT_PUBLIC_INITIA_GLYPH_URL: https://glyph.initia.xyz
+    networks:
+      - eco-network
+
+volumes:
+  db-data:
+
+networks:
+  eco-network:

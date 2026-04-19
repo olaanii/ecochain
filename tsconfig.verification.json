@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "strict": true
+  },
+  "include": [
+    "src/lib/verification.ts",
+    "src/lib/oracle.ts",
+    "src/lib/data/eco.ts"
+  ]
+}

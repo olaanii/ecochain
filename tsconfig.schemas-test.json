@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist-test",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "tests/api-schemas.test.ts",
+    "src/lib/api/schemas.ts"
+  ]
+}

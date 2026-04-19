@@ -1,0 +1,15 @@
+{
+  "name": "EcoLoop",
+  "summary": "Sustainability rewards appchain powered by Initia Auto-sign, Interwoven Bridge, DAO governance, oracle-aware verification, and a rewards loop for eco tasks.",
+  "chainId": "initia-test-1",
+  "deploymentLink": "https://github.com/username/ecoloop",
+  "txnEvidence": "https://explorer.initia.xyz/tx/0xabc123",
+  "demoVideo": "https://youtu.be/example-demo",
+  "initiaFeatures": [
+    "InterwovenKit wallet and bridge integration",
+    "Auto-sign session UX",
+    ".init username registration awareness",
+    "Initia-native reward issuance",
+    "Oracle-backed proof evaluation"
+  ]
+}

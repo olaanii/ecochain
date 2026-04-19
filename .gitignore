@@ -53,3 +53,11 @@ Thumbs.db
 # Build artifacts
 *.bin
 dist-seed/
+
+# Runtime logs (never commit)
+*.log
+start-*.log
+install.log
+install*.log
+build.log
+build.pid

@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ecochain
+          POSTGRES_PASSWORD: ecochain
+          POSTGRES_DB: ecochain
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ecochain"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: false
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm ci
+      - name: Set DATABASE_URL
+        run: echo "DATABASE_URL=postgresql://ecochain:ecochain@localhost:5432/ecochain" >> $GITHUB_ENV
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+      - name: Push Prisma schema
+        run: npm run db:push
+      - name: Lint
+        run: npm run lint
+      - name: Build verification bundle
+        run: npm run build:verification
+      - name: Run unit tests
+        run: npm run test:unit
+      - name: Seed demo data
+        run: npm run db:seed
+      - name: Build app
+        run: npm run build
