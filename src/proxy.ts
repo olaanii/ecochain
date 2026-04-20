@@ -2,51 +2,92 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Routes that require authentication
-const protectedRoutes = [
-  "/dashboard",
-  "/verification",
-  "/merchants",
-  "/api/verify",
-  "/api/redeem",
-  "/api/bridge",
-];
+// ─── Route matchers ──────────────────────────────────────────────────────────
 
-const isSponsorRoute = createRouteMatcher(["/sponsor(.*)"]);
-const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
+/** Routes that require the user to be authenticated. */
+const isAuthRequired = createRouteMatcher([
+  "/dashboard(.*)",
+  "/verification(.*)",
+  "/merchants(.*)",
+  "/analytics(.*)",
+  "/governance(.*)",
+  "/sponsor(.*)",
+  "/admin(.*)",
+  "/api/verify(.*)",
+  "/api/redeem(.*)",
+  "/api/bridge(.*)",
+  "/api/stake(.*)",
+  "/api/me(.*)",
+  "/api/notifications(.*)",
+  "/api/rewards(.*)",
+  "/api/balance(.*)",
+  "/api/leaderboard(.*)",
+  "/api/tasks(.*)",
+  "/api/governance(.*)",
+  "/api/admin(.*)",
+  "/api/transactions(.*)",
+  "/api/verification(.*)",
+  "/api/analytics(.*)",
+  "/api/blockchain(.*)",
+  "/api/events(.*)",
+]);
 
-export default clerkMiddleware(async (auth, request: NextRequest) => {
-  const { userId, sessionClaims } = await auth();
-  const { pathname } = request.nextUrl;
+/** Routes that require role = "admin" or "owner". */
+const isAdminRoute = createRouteMatcher([
+  "/admin(.*)",
+  "/api/admin(.*)",
+]);
 
-  // Unauthenticated users on protected routes → landing page
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
+/** Routes that require role = "sponsor" | "admin" | "owner". */
+const isSponsorRoute = createRouteMatcher([
+  "/sponsor(.*)",
+]);
+
+type UserRole = "user" | "sponsor" | "admin" | "owner";
+
+function getRole(sessionClaims: Record<string, unknown> | null): UserRole {
+  return (
+    (sessionClaims?.publicMetadata as { role?: UserRole } | undefined)?.role ??
+    "user"
   );
-  if (isProtectedRoute && !userId) {
-    return NextResponse.redirect(new URL("/", request.url));
+}
+
+// ─── Proxy ────────────────────────────────────────────────────────────────────
+
+export default clerkMiddleware(async (auth, req: NextRequest) => {
+  const { userId, sessionClaims } = await auth();
+
+  // 1. Auth gate — redirect unauthenticated visitors to sign-in.
+  if (isAuthRequired(req) && !userId) {
+    const signIn = new URL("/sign-in", req.url);
+    signIn.searchParams.set("redirect_url", req.nextUrl.pathname);
+    return NextResponse.redirect(signIn);
   }
 
-  // Role-based portal guards
-  if (userId) {
-    const role =
-      ((sessionClaims?.publicMetadata as Record<string, unknown>)
-        ?.role as string) ?? "user";
+  // From here the user is authenticated (or the route is public).
+  if (!userId) return NextResponse.next();
 
-    if (isSponsorRoute(request) && role !== "sponsor") {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
-    }
+  const role = getRole(sessionClaims as Record<string, unknown>);
 
-    if (isAdminRoute(request) && role !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
+  // 2. Admin gate — non-admin users accessing /admin → 403.
+  if (isAdminRoute(req) && role !== "admin" && role !== "owner") {
+    return NextResponse.redirect(new URL("/403", req.url));
   }
 
-  return NextResponse.next();
+  // 3. Sponsor gate — non-sponsor, non-admin users accessing /sponsor → 403.
+  if (isSponsorRoute(req) && role !== "sponsor" && role !== "admin" && role !== "owner") {
+    return NextResponse.redirect(new URL("/403", req.url));
+  }
+
+  // 4. Propagate role to server components via a response header.
+  const response = NextResponse.next();
+  response.headers.set("x-user-role", role);
+  return response;
 });
 
 export const config = {
   matcher: [
+    // Run on all routes except Next.js internals and static files.
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     "/(api|trpc)(.*)",
   ],

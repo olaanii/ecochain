@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/Staking.sol";
@@ -47,6 +47,9 @@ contract StakingTest is Test {
         
         // Deploy Staking contract
         staking = new Staking(address(ecoToken));
+        
+        // Grant MINTER_ROLE so staking can mint reward tokens on unstake.
+        ecoToken.grantRole(ecoToken.MINTER_ROLE(), address(staking));
         
         // Mint tokens to users
         ecoToken.mint(user1, INITIAL_BALANCE);
@@ -129,9 +132,9 @@ contract StakingTest is Test {
     }
     
     function test_StakeEmitsEvent() public {
-        vm.prank(user1);
         vm.expectEmit(true, true, false, true);
         emit Staked(1, user1, MINIMUM_STAKE, 30, staking.APY_30_DAYS(), block.timestamp + 30 days);
+        vm.prank(user1);
         staking.stake(MINIMUM_STAKE, 30);
     }
     
@@ -217,9 +220,15 @@ contract StakingTest is Test {
         
         vm.warp(block.timestamp + 31 days);
         
+        // Compute expected values using the linear interest formula.
+        // elapsedDays is capped at the stake duration (30 days).
+        uint256 expectedRewards = (MINIMUM_STAKE * staking.APY_30_DAYS() * 30)
+            / (staking.DAYS_PER_YEAR() * staking.APY_DENOMINATOR());
+        uint256 expectedTotal = MINIMUM_STAKE + expectedRewards;
+
         vm.prank(user1);
         vm.expectEmit(true, true, false, true);
-        emit Unstaked(stakeId, user1, MINIMUM_STAKE, 0, 0, MINIMUM_STAKE, false);
+        emit Unstaked(stakeId, user1, MINIMUM_STAKE, expectedRewards, 0, expectedTotal, false);
         staking.unstake(stakeId);
     }
     
@@ -338,7 +347,7 @@ contract StakingTest is Test {
         staking.emergencyPause();
         
         vm.prank(user1);
-        vm.expectRevert("Pausable: paused");
+        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("EnforcedPause()"))));
         staking.stake(MINIMUM_STAKE, 30);
     }
     

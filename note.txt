@@ -1,0 +1,5 @@
+To deploy hardened contracts, add to .env:
+
+PRIVATE_KEY=0x<deployer-key>
+ORACLE_ADDRESS=0x<oracle-evm-address>
+Then run: bash scripts/deploy.sh --broadcast

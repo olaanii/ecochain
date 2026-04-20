@@ -1,0 +1,9 @@
+{
+  "filter_paths": "lib/,node_modules/",
+  "exclude_dependencies": true,
+  "solc_remaps": [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"
+  ],
+  "detectors_to_exclude": "naming-convention,solc-version",
+  "json": "slither-output.json"
+}

@@ -60,6 +60,31 @@ describe("redis client — graceful fallback", () => {
     }).not.toThrow();
   });
 
+  it("rate limiter allows requests when Redis is disabled", async () => {
+    delete process.env.REDIS_URL;
+    delete process.env.REDIS_ENABLED;
+    process.env.REDIS_HOST = "localhost";
+
+    const { rateLimitMiddleware } = await import(
+      "../src/lib/api/middleware/rate-limit"
+    );
+    const req = new Request("http://localhost/api/test");
+    const result = await rateLimitMiddleware(req as any, "user-123");
+    expect(result.allowed).toBe(true);
+    expect(result.response).toBeUndefined();
+  });
+
+  it("pubsub publishEvent resolves without throwing when Redis disabled", async () => {
+    delete process.env.REDIS_URL;
+    delete process.env.REDIS_ENABLED;
+    process.env.REDIS_HOST = "localhost";
+
+    const { publishEvent } = await import("../src/lib/realtime/pubsub");
+    await expect(
+      publishEvent("leaderboard.updated", { updated: true }),
+    ).resolves.not.toThrow();
+  });
+
   it("cache helpers degrade to null/0 when Redis disabled", async () => {
     delete process.env.REDIS_URL;
     delete process.env.REDIS_ENABLED;

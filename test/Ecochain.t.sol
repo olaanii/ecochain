@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/EcoReward.sol";
@@ -16,7 +16,8 @@ contract EcochainTest is Test {
         vm.startPrank(owner);
         ecoToken = new EcoReward();
         verifier = new EcoVerifier(address(ecoToken));
-        ecoToken.setVerifier(address(verifier), true);
+        // Grant MINTER_ROLE to the verifier so it can mint ECO on proof submission.
+        ecoToken.grantRole(ecoToken.MINTER_ROLE(), address(verifier));
         
         verifier.setTask("test_task", 10 * 10**18);
         vm.stopPrank();

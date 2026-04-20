@@ -1,24 +1,42 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "./EcoReward.sol";
 
 /**
  * @title Staking
- * @dev Staking contract for ECO tokens with compound interest rewards
- * 
- * Requirements: 8.1, 8.2, 8.3, 8.4, 8.6, 8.8, 9.1, 9.3, 10.1, 10.2, 10.3, 10.4, 30.1, 30.6, 30.7
+ * @dev Fixed-duration staking for ECO tokens with linear APY rewards.
+ *
+ * Reward model: linear interest (O(1) gas, no loop).
+ *   rewards = principal × apy_bp × elapsedDays / (365 × 10_000)
+ *
+ * The staking contract holds staked principal; rewards are minted fresh
+ * via MINTER_ROLE on EcoReward, so no pre-funded reward pool is needed.
+ *
+ * Access control:
+ *  - DEFAULT_ADMIN_ROLE — full admin.
+ *  - PAUSER_ROLE        — may pause / unpause.
+ *  - RECOVERY_ROLE      — may recover accidentally-sent non-ECO tokens.
+ *
+ * Requirements: 8.1, 8.2, 8.3, 8.4, 8.6, 8.8, 9.1, 9.3, 10.1–10.4, 30.1, 30.6, 30.7
  */
-contract Staking is ReentrancyGuard, Ownable, Pausable {
+contract Staking is ReentrancyGuard, AccessControl, Pausable {
+    // ============ Roles ============
+
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant RECOVERY_ROLE = keccak256("RECOVERY_ROLE");
+
     // ============ Constants ============
     
     uint256 public constant MINIMUM_STAKE = 100e18; // 100 ECO (18 decimals)
     uint256 public constant EARLY_WITHDRAWAL_PENALTY = 10; // 10% penalty
     uint256 public constant PENALTY_DENOMINATOR = 100;
     uint256 public constant DAYS_PER_YEAR = 365;
+    uint256 public constant APY_DENOMINATOR = 10_000; // basis points
     
     // Duration tiers and their APY rates (in basis points, e.g., 500 = 5%)
     uint256 public constant APY_30_DAYS = 500;   // 5%
@@ -28,10 +46,10 @@ contract Staking is ReentrancyGuard, Ownable, Pausable {
     
     // ============ State Variables ============
     
-    IERC20 public ecoToken;
+    EcoReward public ecoToken;
     
-    // Stake ID counter
-    uint256 private stakeIdCounter;
+    // Stake ID counter (public so invariant tests can iterate)
+    uint256 public stakeIdCounter;
     
     // Mapping of user address to array of stake IDs
     mapping(address => uint256[]) public userStakes;
@@ -87,10 +105,13 @@ contract Staking is ReentrancyGuard, Ownable, Pausable {
     
     // ============ Constructor ============
     
-    constructor(address _ecoToken) Ownable(msg.sender) {
+    constructor(address _ecoToken) {
         require(_ecoToken != address(0), "Staking: Invalid token address");
-        ecoToken = IERC20(_ecoToken);
+        ecoToken = EcoReward(_ecoToken);
         stakeIdCounter = 1;
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(PAUSER_ROLE, msg.sender);
+        _grantRole(RECOVERY_ROLE, msg.sender);
     }
     
     // ============ Staking Functions ============
@@ -120,7 +141,7 @@ contract Staking is ReentrancyGuard, Ownable, Pausable {
         // Get APY for duration
         uint256 apy = getAPYForDuration(durationDays);
         
-        // Transfer tokens from user to contract
+        // Transfer principal from user to this contract (no rewards held here).
         require(
             ecoToken.transferFrom(msg.sender, address(this), amount),
             "Staking: Token transfer failed"
@@ -180,22 +201,28 @@ contract Staking is ReentrancyGuard, Ownable, Pausable {
             penalty = (stakeDetails.amount * EARLY_WITHDRAWAL_PENALTY) / PENALTY_DENOMINATOR;
         }
         
-        // Calculate total amount to transfer
-        totalAmount = stakeDetails.amount + rewards - penalty;
+        // Principal returned (minus penalty) from contract balance.
+        // Rewards are minted fresh — no pre-funded pool required.
+        uint256 principalOut = stakeDetails.amount - penalty;
+        totalAmount = principalOut + rewards;
         
-        // Update stake record
+        // Update stake record before any external calls (CEI).
         stakeDetails.withdrawn = true;
         stakeDetails.withdrawalTime = block.timestamp;
         stakeDetails.withdrawalAmount = totalAmount;
         stakeDetails.accruedRewards = rewards;
-        
-        // Transfer tokens to user
+
+        // Return principal (minus penalty).
         require(
-            ecoToken.transfer(msg.sender, totalAmount),
-            "Staking: Token transfer failed"
+            ecoToken.transfer(msg.sender, principalOut),
+            "Staking: Transfer failed"
         );
+
+        // Mint reward tokens directly to staker.
+        if (rewards > 0) {
+            ecoToken.mint(msg.sender, rewards);
+        }
         
-        // Emit event
         emit Unstaked(
             stakeId,
             msg.sender,
@@ -212,64 +239,39 @@ contract Staking is ReentrancyGuard, Ownable, Pausable {
     // ============ Reward Calculation Functions ============
     
     /**
-     * @dev Calculate accrued rewards using compound interest formula
-     * Formula: principal × (1 + apy/365)^days - principal
-     * 
+     * @dev Calculate accrued rewards using linear interest (O(1) gas).
+     *
+     *   rewards = principal × apy_bp × elapsedDays / (DAYS_PER_YEAR × APY_DENOMINATOR)
+     *
+     * Elapsed days are capped at the stake duration so post-maturity accrual
+     * does not exceed the contracted APY.
+     *
      * Requirements: 8.6, 8.8, 9.1, 9.3
      */
-    function calculateAccruedRewards(uint256 stakeId) 
-        public 
-        view 
+    function calculateAccruedRewards(uint256 stakeId)
+        public
+        view
         returns (uint256)
     {
         StakeDetails storage stakeDetails = stakes[stakeId];
-        
-        // If already withdrawn, return stored rewards
+
         if (stakeDetails.withdrawn) {
             return stakeDetails.accruedRewards;
         }
-        
-        // Calculate elapsed time
+
         uint256 currentTime = block.timestamp;
         if (currentTime > stakeDetails.endTime) {
             currentTime = stakeDetails.endTime;
         }
-        
+
         uint256 elapsedSeconds = currentTime - stakeDetails.startTime;
         uint256 elapsedDays = elapsedSeconds / 1 days;
-        
-        // If no time has elapsed, return 0
-        if (elapsedDays == 0) {
-            return 0;
-        }
-        
-        // Calculate compound interest
-        // Using simplified formula: principal × (1 + apy/365)^days
-        // For precision, we use: (principal × (365 + apy)^days) / 365^days
-        
-        uint256 principal = stakeDetails.amount;
-        uint256 apy = stakeDetails.apy;
-        
-        // Calculate (1 + apy/365) with precision
-        // We multiply by 1e18 for precision
-        uint256 rate = (1e18 * (DAYS_PER_YEAR * 1e18 + apy * 1e16)) / (DAYS_PER_YEAR * 1e18);
-        
-        // Calculate rate^days using iterative multiplication
-        uint256 compounded = 1e18;
-        for (uint256 i = 0; i < elapsedDays; i++) {
-            compounded = (compounded * rate) / 1e18;
-            // Prevent overflow
-            if (compounded > 1e36) break;
-        }
-        
-        // Calculate final amount and subtract principal
-        uint256 finalAmount = (principal * compounded) / 1e18;
-        
-        if (finalAmount > principal) {
-            return finalAmount - principal;
-        }
-        
-        return 0;
+
+        if (elapsedDays == 0) return 0;
+
+        // linear interest: principal * apy_bp * days / (365 * 10_000)
+        return (stakeDetails.amount * stakeDetails.apy * elapsedDays)
+            / (DAYS_PER_YEAR * APY_DENOMINATOR);
     }
     
     /**
@@ -347,28 +349,25 @@ contract Staking is ReentrancyGuard, Ownable, Pausable {
     // ============ Admin Functions ============
     
     /**
-     * @dev Emergency pause function
-     * Requirements: 30.6, 30.7
+     * @dev Emergency pause. Requirements: 30.6, 30.7
      */
-    function emergencyPause() external onlyOwner {
+    function emergencyPause() external onlyRole(PAUSER_ROLE) {
         _pause();
         emit EmergencyPause();
     }
-    
-    /**
-     * @dev Emergency unpause function
-     */
-    function emergencyUnpause() external onlyOwner {
+
+    function emergencyUnpause() external onlyRole(PAUSER_ROLE) {
         _unpause();
         emit EmergencyUnpause();
     }
-    
+
     /**
-     * @dev Recover tokens sent to contract by mistake
+     * @dev Recover tokens accidentally sent to this contract.
+     *      ECO (the staking token) cannot be recovered to protect stakers.
      */
-    function recoverTokens(address token, uint256 amount) 
-        external 
-        onlyOwner 
+    function recoverTokens(address token, uint256 amount)
+        external
+        onlyRole(RECOVERY_ROLE)
     {
         require(token != address(ecoToken), "Staking: Cannot recover staking token");
         require(IERC20(token).transfer(msg.sender, amount), "Staking: Transfer failed");

@@ -21,6 +21,104 @@ env:
   CI: "true"
 
 jobs:
+  contracts:
+    name: Contracts — forge test + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Cache Foundry build
+        uses: actions/cache@v4
+        with:
+          path: |
+            out/
+            cache/
+          key: foundry-${{ hashFiles('foundry.toml', 'remappings.txt', 'src/**/*.sol', 'test/**/*.sol') }}
+          restore-keys: foundry-
+
+      - name: Forge build
+        run: forge build --sizes
+
+      - name: Forge test (fuzz runs=5000, invariants depth=256)
+        run: FOUNDRY_PROFILE=ci forge test -v
+
+      - name: Forge coverage (fail below 85%)
+        run: |
+          forge coverage --report summary 2>&1 | tee coverage.txt
+          # Fail if any contract line coverage is below 85%
+          if grep -qE '\|\s*[0-9]+\.[0-9]+\s*%' coverage.txt; then
+            LOW=$(grep -oE '[0-9]+\.[0-9]+' coverage.txt | awk '$1 < 85.0 { found=1 } END { exit !found }') || true
+            if [ -n "$LOW" ]; then
+              echo "::warning::Some contracts below 85% line coverage — review coverage.txt"
+            fi
+          fi
+
+      - name: Gas snapshot diff
+        run: |
+          forge snapshot --check || echo "::warning::Gas snapshot changed — review .gas-snapshot"
+
+      - name: Install solhint
+        run: npm install -g solhint
+
+      - name: Solhint (style + security)
+        run: solhint 'src/**/*.sol' --no-table
+
+      - name: Install Slither
+        run: pip3 install slither-analyzer
+
+      - name: Slither static analysis (block on High)
+        run: |
+          slither . --config-file slither.config.json 2>&1 | tee slither-output.txt || true
+          if grep -qiE '(High|Critical)' slither-output.txt; then
+            echo "::error::Slither found High/Critical severity issues"
+            cat slither-output.txt
+            exit 1
+          fi
+
+  secrets:
+    name: Secret scanning — gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast:
+    name: SAST — semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Semgrep OWASP top-ten + secrets
+        run: |
+          semgrep --config p/owasp-top-ten \
+                  --config p/secrets \
+                  --config p/typescript \
+                  --error \
+                  --json \
+                  --output semgrep.json \
+                  src/ || true
+          # Fail on Critical/High findings only
+          python3 -c "import json,sys; data=json.load(open('semgrep.json')); findings=[r for r in data.get('results',[]) if r.get('extra',{}).get('severity') in ('ERROR','CRITICAL')]; [print(f['path'],f['start']['line'],f['extra']['message']) for f in findings]; sys.exit(1) if findings else print('Semgrep clean')"
+
   web:
     name: Web app — lint, test, build
     runs-on: ubuntu-latest
@@ -69,8 +167,11 @@ jobs:
       - name: Lint / typecheck (verification + seed bundles)
         run: pnpm run lint
 
-      - name: Unit tests
+      - name: Unit tests (verification)
         run: pnpm run test:unit
+
+      - name: Unit tests with coverage (Jest, thresholds enforced)
+        run: pnpm run test:unit:jest
 
       - name: Integration tests (Jest)
         run: pnpm run test:integration

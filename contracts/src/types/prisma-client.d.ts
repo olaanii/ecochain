@@ -1,5 +1,6 @@
 declare module "@prisma/client" {
   export class PrismaClient {
+    [x: string]: any;
     task: any;
     rewardOffering: any;
     daoProposal: any;

@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import clsx from "clsx";
+import type { NavSection } from "@/lib/navigation/config";
 
 interface NavItem {
   label: string;
@@ -13,20 +15,37 @@ interface NavItem {
 interface MobileDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  navItems: NavItem[];
+  /** Legacy flat list — used only for landing variant */
+  navItems?: NavItem[];
+  /** Role-aware sections from navigationFor(role) — preferred */
+  sections?: NavSection[];
 }
 
 /**
  * Mobile navigation drawer with touch gesture support, backdrop overlay,
  * body scroll lock, and accessibility features.
  *
+ * Accepts either `sections` (role-aware full nav) or `navItems` (legacy flat).
+ * When `sections` is provided it renders all top-level sections with
+ * expandable sub-nav for the active section — resolving [N-4].
+ *
  * **Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.5, 12.6**
  */
-export function MobileDrawer({ isOpen, onClose, navItems }: MobileDrawerProps) {
+export function MobileDrawer({ isOpen, onClose, navItems, sections }: MobileDrawerProps) {
   const pathname = usePathname();
   const drawerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number>(0);
   const touchCurrentX = useRef<number>(0);
+
+  // Auto-expand the section that matches the current pathname
+  const activeSection = sections?.find(
+    (s) => pathname === s.href || pathname.startsWith(s.href + "/") || pathname.startsWith(s.href + "?"),
+  );
+  const [expandedId, setExpandedId] = useState<string | null>(activeSection?.id ?? null);
+
+  useEffect(() => {
+    if (isOpen && activeSection) setExpandedId(activeSection.id);
+  }, [isOpen, activeSection]);
 
   // Body scroll lock when drawer is open (Requirement 12.6)
   useEffect(() => {
@@ -205,26 +224,89 @@ export function MobileDrawer({ isOpen, onClose, navItems }: MobileDrawerProps) {
 
         {/* Navigation links (Requirement 12.3) */}
         <nav className="flex flex-col px-4 py-6">
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={handleNavClick}
-                className={clsx(
-                  "rounded-lg px-4 py-3 text-base font-medium",
-                  "transition-colors",
-                  isActive
-                    ? "bg-[#cafd00]/10 text-[#cafd00] border-l-4 border-[#cafd00]"
-                    : "text-[#adaaaa] hover:bg-[rgba(73,72,71,0.2)] hover:text-white"
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+          {sections ? (
+            sections.map((section) => {
+              const isSectionActive =
+                pathname === section.href ||
+                pathname.startsWith(section.href + "/") ||
+                pathname.startsWith(section.href + "?");
+              const isExpanded = expandedId === section.id;
+              const Icon = section.icon;
+
+              return (
+                <div key={section.id}>
+                  <button
+                    onClick={() => {
+                      setExpandedId(isExpanded ? null : section.id);
+                      if (section.subNav.length === 0) {
+                        onClose();
+                      }
+                    }}
+                    className={clsx(
+                      "flex w-full items-center justify-between rounded-lg px-4 py-3 text-base font-medium transition-colors",
+                      isSectionActive
+                        ? "border-l-4 border-[#cafd00] bg-[#cafd00]/10 text-[#cafd00]"
+                        : "text-[#adaaaa] hover:bg-[rgba(73,72,71,0.2)] hover:text-white",
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Icon size={18} />
+                      {section.label}
+                    </span>
+                    {section.subNav.length > 0 && (
+                      <ChevronDown
+                        size={15}
+                        className={clsx("transition-transform", isExpanded && "rotate-180")}
+                      />
+                    )}
+                  </button>
+
+                  {isExpanded && section.subNav.length > 0 && (
+                    <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l border-[rgba(73,72,71,0.3)] pl-3">
+                      {section.subNav.map((sub) => {
+                        const isSubActive = pathname === sub.href || pathname.startsWith(sub.href + "?");
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            onClick={handleNavClick}
+                            className={clsx(
+                              "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                              isSubActive
+                                ? "text-[#cafd00]"
+                                : "text-[#adaaaa] hover:text-white",
+                            )}
+                          >
+                            {sub.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            (navItems ?? []).map((item) => {
+              const isActive =
+                pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={handleNavClick}
+                  className={clsx(
+                    "rounded-lg px-4 py-3 text-base font-medium transition-colors",
+                    isActive
+                      ? "border-l-4 border-[#cafd00] bg-[#cafd00]/10 text-[#cafd00]"
+                      : "text-[#adaaaa] hover:bg-[rgba(73,72,71,0.2)] hover:text-white",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })
+          )}
         </nav>
       </div>
     </>

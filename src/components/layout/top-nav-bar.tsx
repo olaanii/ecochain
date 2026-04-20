@@ -14,6 +14,7 @@ import { hasClerkSetup } from "@/lib/runtime-config";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import type { UserRole } from "@/hooks/use-user-role";
+import { navigationFor, resolveSubNav } from "@/lib/navigation/config";
 
 interface SubNavTab {
   label: string;
@@ -37,82 +38,6 @@ const landingNavItems: SubNavTab[] = [
   { label: "Journal", href: "/analytics" },
 ];
 
-/** Map of route prefix → contextual sub-nav tabs */
-const subNavMap: Record<string, SubNavTab[]> = {
-  "/discover": [
-    { label: "All Actions", href: "/discover" },
-    { label: "Mine", href: "/discover?filter=mine" },
-    { label: "Trending", href: "/discover?filter=trending" },
-  ],
-  "/merchants": [
-    { label: "All Offers", href: "/merchants" },
-    { label: "Redeemed", href: "/merchants?filter=redeemed" },
-    { label: "Expiring Soon", href: "/merchants?filter=expiring" },
-  ],
-  "/rewards": [
-    { label: "Overview", href: "/rewards" },
-    { label: "History", href: "/rewards?tab=history" },
-    { label: "Pending", href: "/rewards?tab=pending" },
-  ],
-  "/analytics": [
-    { label: "Impact", href: "/analytics" },
-    { label: "Carbon", href: "/analytics?tab=carbon" },
-    { label: "Community", href: "/analytics?tab=community" },
-  ],
-  "/sponsor/tasks": [
-    { label: "Active", href: "/sponsor/tasks" },
-    { label: "Draft", href: "/sponsor/tasks?status=draft" },
-    { label: "Ended", href: "/sponsor/tasks?status=ended" },
-  ],
-  "/sponsor/campaigns": [
-    { label: "Active", href: "/sponsor/campaigns" },
-    { label: "Scheduled", href: "/sponsor/campaigns?status=scheduled" },
-    { label: "Completed", href: "/sponsor/campaigns?status=completed" },
-  ],
-  "/sponsor/analytics": [
-    { label: "Overview", href: "/sponsor/analytics" },
-    { label: "Users", href: "/sponsor/analytics?tab=users" },
-    { label: "Trends", href: "/sponsor/analytics?tab=trends" },
-  ],
-  "/sponsor/rewards-pool": [
-    { label: "Balance", href: "/sponsor/rewards-pool" },
-    { label: "Payouts", href: "/sponsor/rewards-pool?tab=payouts" },
-    { label: "Settings", href: "/sponsor/rewards-pool?tab=settings" },
-  ],
-  "/admin/users": [
-    { label: "All", href: "/admin/users" },
-    { label: "Flagged", href: "/admin/users?filter=flagged" },
-    { label: "Suspended", href: "/admin/users?filter=suspended" },
-  ],
-  "/admin/review": [
-    { label: "Pending", href: "/admin/review" },
-    { label: "Approved", href: "/admin/review?status=approved" },
-    { label: "Rejected", href: "/admin/review?status=rejected" },
-  ],
-  "/admin/fraud": [
-    { label: "Overview", href: "/admin/fraud" },
-    { label: "Patterns", href: "/admin/fraud?tab=patterns" },
-    { label: "History", href: "/admin/fraud?tab=history" },
-  ],
-  "/admin/analytics": [
-    { label: "Platform", href: "/admin/analytics" },
-    { label: "Tasks", href: "/admin/analytics?tab=tasks" },
-    { label: "Users", href: "/admin/analytics?tab=users" },
-  ],
-  "/admin/config": [
-    { label: "General", href: "/admin/config" },
-    { label: "Contracts", href: "/admin/config?tab=contracts" },
-    { label: "Features", href: "/admin/config?tab=features" },
-  ],
-};
-
-function getSubNavTabs(pathname: string): SubNavTab[] {
-  const match = Object.keys(subNavMap)
-    .sort((a, b) => b.length - a.length)
-    .find((prefix) => pathname === prefix || pathname.startsWith(prefix + "/") || pathname.startsWith(prefix + "?"));
-  return match ? subNavMap[match] : [];
-}
-
 function getRoleBadge(role: UserRole) {
   if (role === "admin") return { label: "Admin", cls: "bg-red-100 text-red-700" };
   if (role === "sponsor") return { label: "Sponsor", cls: "bg-amber-100 text-amber-700" };
@@ -135,17 +60,16 @@ export function TopNavBar({
   const kit = useInterwovenKit() as unknown as InterwovenKitActions;
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
+  const { sections } = navigationFor(role);
   const subTabs =
     variant === "landing"
       ? landingNavItems
-      : getSubNavTabs(pathname);
+      : resolveSubNav(sections, pathname);
 
   const roleBadge = getRoleBadge(role);
 
-  const mobileNavItems =
-    variant === "landing"
-      ? landingNavItems
-      : (subNavMap[pathname] ?? []);
+  const mobileNavItems = variant === "landing" ? landingNavItems : undefined;
+  const mobileSections = variant === "app" ? sections : undefined;
 
   return (
     <>
@@ -254,13 +178,12 @@ export function TopNavBar({
         </div>
       </header>
 
-      {variant === "app" && (
-        <MobileDrawer
-          isOpen={isMobileDrawerOpen}
-          onClose={() => setIsMobileDrawerOpen(false)}
-          navItems={mobileNavItems}
-        />
-      )}
+      <MobileDrawer
+        isOpen={isMobileDrawerOpen}
+        onClose={() => setIsMobileDrawerOpen(false)}
+        navItems={mobileNavItems}
+        sections={mobileSections}
+      />
     </>
   );
 }

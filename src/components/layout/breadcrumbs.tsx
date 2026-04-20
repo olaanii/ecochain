@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { ChevronRight } from "lucide-react";
+import { navigationFor } from "@/lib/navigation/config";
+import { useUserRole } from "@/hooks/use-user-role";
 
 interface BreadcrumbsProps {
   maxItems?: number;
@@ -17,94 +19,66 @@ interface BreadcrumbSegment {
   isCurrentPage: boolean;
 }
 
-/**
- * Route label mapping for all application routes
- * Maps route paths to human-readable labels
- */
-const routeLabels: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/discover": "Discover",
-  "/verification": "Verification",
-  "/verification/camera": "Camera",
-  "/verification/status": "Status",
-  "/merchants": "Merchants",
-  "/merchants/hub-main": "Hub",
-  "/merchants/redemption": "Redemption",
-  "/bridge": "Bridge",
-};
-
-/**
- * Top-level routes where breadcrumbs should be hidden
- * (Requirement 11.5)
- */
-const topLevelRoutes = ["/", "/dashboard", "/discover", "/bridge"];
+/** Capitalise each word in a kebab-case slug. */
+function capitalise(slug: string): string {
+  return slug
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
 
 /**
  * Breadcrumbs component with automatic route segment generation.
- * Displays hierarchical navigation path for nested routes.
+ * Labels are resolved from the centralised `navigationFor(role)` config;
+ * unknown segments fall back to capitalised slug text.
  *
- * **Validates: Requirements 11.1, 11.2, 11.3, 11.4, 11.5**
+ * **Validates: Requirements 11.1–11.5**
  */
 export function Breadcrumbs({
   maxItems = 5,
   separator = <ChevronRight className="h-4 w-4" />,
 }: BreadcrumbsProps) {
   const pathname = usePathname();
+  const { role } = useUserRole();
 
-  // Generate breadcrumb segments from pathname (Requirement 11.2, 11.4)
   const breadcrumbs = useMemo<BreadcrumbSegment[]>(() => {
-    // Hide breadcrumbs on top-level routes (Requirement 11.5)
-    if (topLevelRoutes.includes(pathname)) {
-      return [];
-    }
-
-    // Split pathname into segments
     const segments = pathname.split("/").filter(Boolean);
 
-    // If only one segment, it's a top-level route - hide breadcrumbs
-    if (segments.length <= 1) {
-      return [];
+    // Hide on root or single-segment (top-level) routes (Requirement 11.5)
+    if (segments.length <= 1) return [];
+
+    // Build a label map from nav config: href → label
+    const { sections } = navigationFor(role);
+    const labelMap: Record<string, string> = {};
+    for (const section of sections) {
+      labelMap[section.href] = section.label;
+      for (const sub of section.subNav) {
+        // Strip query string for label lookup
+        const key = sub.href.split("?")[0];
+        if (key) labelMap[key] = sub.label;
+      }
     }
 
-    // Build breadcrumb segments
     const crumbs: BreadcrumbSegment[] = [];
     let currentPath = "";
 
     segments.forEach((segment, index) => {
       currentPath += `/${segment}`;
       const isLast = index === segments.length - 1;
-
-      // Get label from mapping or capitalize segment
-      const label =
-        routeLabels[currentPath] ||
-        segment
-          .split("-")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
-
-      crumbs.push({
-        label,
-        href: currentPath,
-        isCurrentPage: isLast,
-      });
+      const label = labelMap[currentPath] ?? capitalise(segment);
+      crumbs.push({ label, href: currentPath, isCurrentPage: isLast });
     });
 
-    // Limit breadcrumbs to maxItems if specified
     if (crumbs.length > maxItems) {
-      // Keep first and last items, collapse middle
       return [
         crumbs[0],
-        {
-          label: "...",
-          href: "#",
-          isCurrentPage: false,
-        },
+        { label: "...", href: "#", isCurrentPage: false },
         ...crumbs.slice(-(maxItems - 2)),
       ];
     }
 
     return crumbs;
-  }, [pathname, maxItems]);
+  }, [pathname, role, maxItems]);
 
   // Don't render if no breadcrumbs
   if (breadcrumbs.length === 0) {

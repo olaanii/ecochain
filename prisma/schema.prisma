@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -270,5 +271,31 @@ model ProposalExecution {
   @@index([proposalId])
   @@index([status])
   @@index([executedAt])
+}
+
+/// Immutable audit trail of every privileged action performed by staff.
+/// Never delete rows from this table; mark superseded rows via `supersededBy`.
+model AuditLog {
+  id           String   @id @default(cuid())
+  /// Clerk userId of the actor performing the action.
+  actorId      String
+  /// Human-readable action code, e.g. "user.role_changed", "contract.paused".
+  action       String
+  /// The resource type affected, e.g. "User", "DaoProposal", "Contract".
+  resource     String
+  /// ID of the affected resource (DB id or on-chain address).
+  resourceId   String
+  /// JSON snapshot of the change: { before, after } or arbitrary context.
+  payload      Json?
+  /// IP address of the actor at time of action.
+  ipAddress    String?
+  /// User-agent string of the actor's client.
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([resource, resourceId])
+  @@index([createdAt])
 }
 

@@ -7,7 +7,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { requireCurrentDbUser, requireRole } from '@/lib/auth/current-user';
+import { rateLimitMiddleware } from '@/lib/api/middleware/rate-limit';
+import { writeAuditLog, AuditActions } from '@/lib/audit/log';
 import { prisma } from '@/lib/prisma/client';
 import { redis } from '@/lib/redis/client';
 
@@ -15,29 +17,15 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ reviewId: string }> }
 ) {
+  const rl = await rateLimitMiddleware(request);
+  if (!rl.allowed) return rl.response!;
+
+  const actor = await requireCurrentDbUser();
+  if ('error' in actor) return actor.error;
+  const roleErr = requireRole(actor, ['admin', 'owner']);
+  if (roleErr) return roleErr;
+
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin
-    const admin = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      select: { role: true, id: true },
-    });
-
-    if (!admin || admin.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
-
     const { reviewId } = await params;
 
     // Look up the review queue entry from Redis to get the real verification ID
@@ -65,7 +53,7 @@ export async function POST(
       where: { id: verificationId },
       data: {
         status: 'verified',
-        reviewedBy: admin.id,
+        reviewedBy: actor.id,
       },
       include: {
         user: { select: { id: true, displayName: true } },
@@ -84,7 +72,7 @@ export async function POST(
           transactionHash: verification.transactionHash || undefined,
           metadata: {
             verificationId: verification.id,
-            approvedBy: admin.id,
+            approvedBy: actor.id,
             approvedAt: new Date().toISOString(),
           },
         },
@@ -108,6 +96,15 @@ export async function POST(
     // Clear any per-task cooldown that was set on prior rejection and drop the review entry
     await redis.del(`cooldown:${verification.userId}:${verification.taskId}`);
     await redis.del(`review-queue:${reviewId}`);
+
+    await writeAuditLog({
+      actorId: actor.clerkId,
+      action: AuditActions.VERIFICATION_APPROVED,
+      resource: 'Verification',
+      resourceId: verification.id,
+      payload: { reward: verification.reward, reviewId },
+      req: request,
+    });
 
     // Create notification
     await prisma.notification.create({

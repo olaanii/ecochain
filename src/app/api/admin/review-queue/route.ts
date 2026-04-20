@@ -9,7 +9,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { requireCurrentDbUser, requireRole } from '@/lib/auth/current-user';
+import { rateLimitMiddleware } from '@/lib/api/middleware/rate-limit';
+import { paginationFor } from '@/lib/api/pagination';
 import { prisma } from '@/lib/prisma/client';
 
 /**
@@ -17,101 +19,47 @@ import { prisma } from '@/lib/prisma/client';
  * Get pending fraud reviews
  */
 export async function GET(request: NextRequest) {
-  try {
-    const { userId } = await auth();
+  const rl = await rateLimitMiddleware(request);
+  if (!rl.allowed) return rl.response!;
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  const actor = await requireCurrentDbUser();
+  if ('error' in actor) return actor.error;
+  const roleErr = requireRole(actor, ['admin', 'owner']);
+  if (roleErr) return roleErr;
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      select: { role: true },
-    });
+  const { searchParams } = request.nextUrl;
+  const statusFilter = searchParams.get('status') ?? 'pending';
+  const { prismaArgs, respond } = paginationFor(searchParams);
 
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
+  const where = {
+    fraudScore: { gt: 0.5 },
+    status: statusFilter,
+  };
 
-    // Get query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get('status') || 'pending';
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
-
-    // Get verifications flagged for review
-    const flaggedVerifications = await prisma.verification.findMany({
-      where: {
-        fraudScore: { gt: 0.5 },
-        status: 'pending',
-      },
+  const [rows, total] = await Promise.all([
+    prisma.verification.findMany({
+      where,
       include: {
-        user: {
-          select: {
-            id: true,
-            displayName: true,
-            initiaAddress: true,
-          },
-        },
-        task: {
-          select: {
-            id: true,
-            name: true,
-            category: true,
-          },
-        },
+        user: { select: { id: true, displayName: true, initiaAddress: true } },
+        task: { select: { id: true, name: true, category: true } },
       },
       orderBy: { fraudScore: 'desc' },
-      take: limit,
-      skip: offset,
-    });
+      ...prismaArgs,
+    }),
+    prisma.verification.count({ where }),
+  ]);
 
-    // Get total count
-    const total = await prisma.verification.count({
-      where: {
-        fraudScore: { gt: 0.5 },
-        status: 'pending',
-      },
-    });
+  const page = respond(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rows.map((v: any) => ({
+      ...v,
+      userName: v.user.displayName,
+      userAddress: v.user.initiaAddress,
+      taskName: v.task.name,
+      taskCategory: v.task.category,
+    })),
+    total,
+  );
 
-    return NextResponse.json({
-      success: true,
-      data: flaggedVerifications.map((v: typeof flaggedVerifications[number]) => ({
-        id: v.id,
-        userId: v.userId,
-        userName: v.user.displayName,
-        userAddress: v.user.initiaAddress,
-        taskId: v.taskId,
-        taskName: v.task.name,
-        taskCategory: v.task.category,
-        fraudScore: v.fraudScore,
-        proofHash: v.proofHash,
-        metadata: v.metadata,
-        createdAt: v.createdAt,
-      })),
-      pagination: {
-        limit,
-        offset,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    console.error('[API] Error fetching review queue:', error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ success: true, ...page });
 }

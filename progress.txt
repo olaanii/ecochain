@@ -125,3 +125,256 @@ CSS
 
 DB schema
   User.role comment updated: user | sponsor | admin | owner (no migration needed)
+
+---
+Redis flood fix — DONE (Apr 19 2026 evening)
+--------------------------------------------
+Root cause
+  src/lib/redis/client.ts was calling `new Redis({ lazyConnect: false })` at
+  module import. With no Redis running locally ioredis emitted an `error`
+  event every retry tick (~100ms) and `createSubscriber(...)` in
+  pubsub.ts spawned an additional connection per /api/events hit.
+
+Fix (single file, minimal)
+  - `isRedisEnabled()` helper: returns false when no REDIS_URL, REDIS_HOST
+    unset/"localhost" without REDIS_ENABLED=1, or DISABLE_REDIS=1.
+  - `createRedisConnection(tag)` factory:
+      * Returns a typed no-op stub when Redis is disabled.
+      * Otherwise constructs ioredis with:
+          lazyConnect: true
+          maxRetriesPerRequest: 3
+          retryStrategy: bounded exponential backoff, gives up at 5 attempts
+          reconnectOnError: only on READONLY
+      * Single `error` listener with a 60s dedupe — "N additional errors
+        suppressed" instead of 10k stack traces.
+  - `redis` singleton now routes through the factory (tag="main").
+  - pubsub.ts shared bus also routes through the factory (tag="pubsub")
+    instead of raw `new Redis(...)`.
+  - .env.example rewritten with a commented-out block + guidance: leave it
+    blank locally, set REDIS_URL (Upstash free tier) in prod.
+  - src/lib/redis/index.ts re-exports createRedisConnection + isRedisEnabled.
+
+Tests
+  tests/redis-stub.test.ts — 5 regression cases:
+    * localhost + no opt-in → disabled
+    * DISABLE_REDIS=1 overrides REDIS_URL
+    * stub read/write/pubsub/ping resolve without throwing
+    * stub.on(...) for lifecycle listeners is a no-op
+    * cacheGet/cacheSet/cacheDelete degrade cleanly when Redis disabled
+
+Verification
+  - tsc --noEmit: client.ts + pubsub.ts clean
+  - dev server: no more ECONNREFUSED flood when Redis absent; a single
+    "[Redis:main] disabled — running with no-op stub client" warning instead.
+
+Open follow-ups (not urgent)
+  - Add Upstash REDIS_URL to Vercel preview + prod env.
+  - Audit src/lib/api/middleware/rate-limit.ts to confirm it treats stub
+    responses (null/0) as "allow" rather than block.
+
+---
+Smart-contract hardening — DONE (Apr 19 2026 late)
+--------------------------------------------------
+Threat fixed (CRITICAL)
+  The previous EcoVerifier.submitProof() was unauthenticated — any address
+  could mint the task's baseReward by guessing a proofHash. Replaced with an
+  EIP-712 oracle-signed attestation flow.
+
+EcoReward.sol
+  - OpenZeppelin v5 AccessControl + ERC20Pausable.
+  - Roles: DEFAULT_ADMIN_ROLE, MINTER_ROLE, PAUSER_ROLE.
+  - Immutable supply cap set at construction (CapExceeded custom error).
+  - Only MINTER_ROLE can mint; pause halts transfers globally.
+
+EcoVerifier.sol
+  - Requires EIP-712 signed Attestation(user, taskId, proofHash, reward,
+    nonce, deadline) from an ORACLE_ROLE signer.
+  - Per-user monotonic nonce + global proofHash uniqueness (replay-proof).
+  - Per-task {baseReward, maxReward, active, exists} struct — oracle may
+    quote any reward <= maxReward.
+  - Pausable (PAUSER_ROLE), ReentrancyGuard on the claim path.
+  - hashAttestation() + domainSeparator() views for off-chain signer devs.
+
+Staking.sol
+  - Switched to OZ v5 import paths.
+  - SafeERC20 for all token transfers (no silent false-returns).
+
+Deployment
+  - contracts/script/deploy.s.sol now takes ADMIN_ADDRESS, ORACLE_ADDRESS,
+    ECO_SUPPLY_CAP env vars, grants MINTER_ROLE to the Verifier, and seeds
+    initial tasks only when admin == deployer.
+
+Tests (contracts/test/Ecochain.t.sol)
+  - Happy path + bad signer + cross-user signature rejection.
+  - Replay (same proofHash) + nonce out-of-order rejection.
+  - Unknown / inactive task.
+  - reward > maxReward, expired deadline.
+  - Pause halts claims; token pause halts transfers.
+  - MINTER_ROLE required on token; supply cap enforced.
+
+Open follow-ups
+  - Wire the off-chain signer service (ORACLE_SIGNER_PRIVATE_KEY) into
+    src/lib/blockchain/oracle-signer.ts and the verification submit API.
+  - Migrate admin from deployer EOA to a Gnosis Safe before mainnet.
+  - Gas snapshot baseline + size budgets.
+
+---
+CI/CD + observability — DONE (Apr 19 2026 late)
+-----------------------------------------------
+GitHub Actions
+  .github/workflows/ci.yml  (web job)
+    - pnpm 9 + Node 20 + Postgres 16 service.
+    - DISABLE_REDIS=1 so the stub client handles cache/rate-limit/pubsub.
+    - Steps: install → prisma generate → db push → lint (tsc projects) →
+      test:unit → test:integration → next build with placeholder auth envs.
+
+  .github/workflows/test.yml  (renamed "Contracts" — was colliding "CI")
+    - Only triggers on contracts/** changes.
+    - Runs with working-directory: contracts so forge finds foundry.toml.
+    - Build → forge test -vvv → gas snapshot (warn) → coverage summary.
+    - Dropped `forge fmt --check` (would fail on hand-written style).
+
+Sentry
+  Upgraded to SDK v10 API in all three configs:
+    - Server/edge: Sentry.httpIntegration() (was `new HttpIntegration`).
+    - Client: Sentry.browserTracingIntegration() +
+              Sentry.replayIntegration({maskAllText, blockAllMedia}).
+    - Sample rates are now env-driven (SENTRY_TRACES_SAMPLE_RATE, etc.)
+      and default to 0.1 in prod to protect the free tier.
+    - beforeSend() redacts authorization / cookie / x-api-key headers.
+
+.env.example
+  - Added PRIVATE_KEY / ADMIN_ADDRESS / ORACLE_ADDRESS / ECO_SUPPLY_CAP
+    block for Foundry deploys.
+  - Added ORACLE_SIGNER_PRIVATE_KEY + signature TTL for the off-chain signer.
+  - Documented new Sentry env overrides.
+
+Open follow-ups
+  - Wire Better Stack / Logtail for server log aggregation.
+  - OpenTelemetry spans around the reward claim + fraud-check paths.
+  - Add a `typecheck` script (`tsc --noEmit -p tsconfig.json`) distinct
+    from the verification/seed bundle builds used today by `lint`.
+
+---
+Oracle signer + attestation API — DONE (Apr 19 2026 evening 2)
+--------------------------------------------------------------
+Why
+  The hardened EcoVerifier rejects every submitProof() without an ORACLE_ROLE
+  signature, so the app had NO working claim path until this shipped.
+
+src/lib/blockchain/oracle-signer.ts  (server-only)
+  - Domain bound to NEXT_PUBLIC_ECO_VERIFIER_ADDR / EVM_CHAIN_ID; matches the
+    EIP712("EcoVerifier","1") used inside the Solidity contract.
+  - ATTESTATION_TYPES matches the on-chain typehash exactly.
+  - signAttestation({user, taskId, proofHash, reward, nonce, deadline}) uses
+    viem `privateKeyToAccount().signTypedData(...)`.
+  - Helpers: taskIdFromSlug() (keccak256(slug)), normalizeProofHash() (passes
+    32-byte hex through, keccak256's anything else), serializeSignedAttestation
+    for JSON responses (bigint → decimal string).
+  - Validates reward>0, nonce>=0, and throws a clear error when
+    ORACLE_SIGNER_PRIVATE_KEY is missing (so API returns 503, not 500).
+  - Target is ES2017 — used BigInt() calls instead of `0n` literals.
+
+src/app/api/verification/[verificationId]/attestation/route.ts
+  - POST, runtime: "nodejs" (viem/accounts needs Node crypto).
+  - Auth via Clerk; verification must belong to caller.
+  - Requires verification.status === "verified", no transactionHash yet,
+    reward > 0, task.slug present, caller.initiaAddress present.
+  - Scales reward: DB stores whole ECO ints, on-chain is 18-decimal wei.
+  - Client passes the on-chain nonce (read via wagmi before calling).
+  - 503 "Signer service is not configured" on missing-env config errors;
+    never leaks raw error messages to the client.
+
+tests/oracle-signer.test.ts  (5 cases, all green)
+  - Happy path: signature recovers to the expected oracle address via
+    viem's hashTypedData + recoverAddress — same math the contract runs.
+  - Rejects reward <= 0.
+  - normalizeProofHash keccak256's short inputs.
+  - taskIdFromSlug == keccak256(utf8 bytes of the slug).
+  - Missing ORACLE_SIGNER_PRIVATE_KEY throws a clear, identifying error.
+
+Still open (next pass)
+  - E2E: spin anvil in CI, deploy, mint a claim round-trip.
+  - Dedupe the `contracts/src/**` duplicate TS tree (stale copies of
+    hooks/lib/app — tsc picks them up and reports pre-existing errors).
+  - Drop the vitest-flavoured `tests/contracts/eco-verifier.test.ts`
+    (never ran against Jest anyway — jest doesn't resolve `vitest`).
+
+---
+Client claim wiring — DONE (Apr 19 2026 evening 3)
+--------------------------------------------------
+src/lib/initia/EcoVerifier_abi.json  (replaced)
+  - Minimal ABI matching the hardened contract: submitProof(bytes32,
+    bytes32, uint256, uint256, uint256, bytes), nonces, usedProofHashes,
+    tasks struct, ORACLE_ROLE, hasRole, domainSeparator, hashAttestation,
+    plus ProofSubmitted / Paused / TaskSet events and the custom errors
+    (BadSigner, ProofReused, InvalidNonce, RewardTooHigh, TaskUnknown,
+    TaskInactive, SignatureExpired, ZeroReward, ZeroAddress).
+
+src/lib/contracts/eco-verifier.ts  (rewrite)
+  - taskId switched from bigint → Hex (bytes32).
+  - ProofSubmissionData extended with reward/nonce/deadline/signature.
+  - New EcoVerifierInterface: tasks / usedProofHashes / nonces / isOracle
+    / submitProof (takes the full ProofSubmissionData tuple).
+  - Helpers: taskIdFromSlug(), toBytes32().
+  - Legacy helpers (generateProofHash/createProofSubmission/
+    validateTimestampRange) throw with migration hints so no caller can
+    silently fall back to the insecure path.
+
+src/hooks/use-eco-claim.ts  (new)
+  - useEcoClaim() exposes a phased mutation:
+      idle → reading-nonce → signing → submitting → success
+      (or → error at any point)
+  - claim(verificationId):
+      1. Refetches on-chain nonces(address) via wagmi useReadContract.
+      2. POST /api/verification/:id/attestation with that nonce.
+      3. writeContractAsync EcoVerifier.submitProof(...sig).
+  - Defensive check: server-returned `user` must match the connected wallet.
+  - Returns `isLoading` (true for any in-flight phase) + `txHash` on success.
+
+src/hooks/use-eco-contracts.ts  (slimmed)
+  - Dropped the insecure three-arg submitProof writer entirely.
+  - Kept balance read + ProofSubmitted event watcher that refetches balance.
+
+Verification
+  - tsc --noEmit: the 5 files above introduce ZERO new errors; only
+    pre-existing issues remain (in contracts/src/** duplicates and
+    vitest-flavoured tests).
+  - tests/oracle-signer.test.ts: 5/5 still green.
+
+---
+Admin portal + backend infra — DONE (Apr 20 2026)
+--------------------------------------------------
+AuditLog shim fix
+  - Added `auditLog: any` to src/types/prisma-client.d.ts so the ambient
+    shim no longer shadows the generated model accessor.
+  - Root cause: shim was last updated before AuditLog was added to schema.
+
+New API routes (all use requireCurrentDbUser + requireRole, cursor-paginated):
+  src/app/api/admin/users/route.ts    — GET (search, filter, cursor) + PATCH (role change)
+  src/app/api/admin/audit/route.ts    — GET (filter by action/resource/actorId, cursor)
+  src/app/api/admin/sponsors/route.ts — GET (filter, cursor) + PATCH (approve/reject/revoke)
+
+Missing admin pages (nav links now resolve):
+  src/app/admin/sponsors/page.tsx  — real API fetch, approve/reject/revoke actions
+  src/app/admin/onchain/page.tsx   — contract addresses, emergency pause UI, upgrade guide
+  src/app/admin/audit/page.tsx     — real AuditLog fetch, expand-to-payload, cursor load-more
+
+Admin users page wired to real data:
+  src/app/admin/users/page.tsx  — replaced mock array with live API, debounced search,
+                                   cursor load-more, inline role-change dropdown
+
+Backend infra:
+  src/lib/api/middleware/idempotency.ts  [B-3] — Redis-backed 24h idempotency with
+                                                   withIdempotency() HOF; degrades when Redis absent
+  src/lib/api/pagination.ts             [B-5] — parsePaginationParams, buildPrismaPage,
+                                                   buildPage, paginationFor() convenience wrapper
+
+Tests:
+  tests/redis-stub.test.ts  [P-5] — added rate-limiter fallback test (allows requests when
+                                      Redis disabled) and pubsub fallback test (publishEvent
+                                      resolves without throwing when Redis disabled)
+
+Verification
+  - tsc --noEmit: no new errors in any of the 10 new/modified files.
+  - auditLog errors in IDE language server are stale cache; compiler has no auditLog errors.

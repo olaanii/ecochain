@@ -7,7 +7,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { requireCurrentDbUser, requireRole } from '@/lib/auth/current-user';
+import { rateLimitMiddleware } from '@/lib/api/middleware/rate-limit';
+import { writeAuditLog, AuditActions } from '@/lib/audit/log';
 import { prisma } from '@/lib/prisma/client';
 import { redis } from '@/lib/redis/client';
 import { z } from 'zod';
@@ -20,29 +22,15 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ reviewId: string }> }
 ) {
+  const rl = await rateLimitMiddleware(request);
+  if (!rl.allowed) return rl.response!;
+
+  const actor = await requireCurrentDbUser();
+  if ('error' in actor) return actor.error;
+  const roleErr = requireRole(actor, ['admin', 'owner']);
+  if (roleErr) return roleErr;
+
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin
-    const admin = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      select: { role: true, id: true },
-    });
-
-    if (!admin || admin.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
-
     // Parse request body
     const body = await request.json();
     const { reason } = RejectSchema.parse(body);
@@ -75,7 +63,7 @@ export async function POST(
       data: {
         status: 'rejected',
         rejectionReason: reason,
-        reviewedBy: admin.id,
+        reviewedBy: actor.id,
       },
       include: {
         user: { select: { id: true, displayName: true } },
@@ -101,6 +89,15 @@ export async function POST(
     const cooldownKey = `cooldown:${verification.userId}:${verification.taskId}`;
     await redis.setex(cooldownKey, 24 * 60 * 60, '1'); // 24 hour cooldown
     await redis.del(`review-queue:${reviewId}`);
+
+    await writeAuditLog({
+      actorId: actor.clerkId,
+      action: AuditActions.VERIFICATION_REJECTED,
+      resource: 'Verification',
+      resourceId: verification.id,
+      payload: { reason, reviewId },
+      req: request,
+    });
 
     return NextResponse.json({
       success: true,

@@ -13,7 +13,12 @@ function createPrismaClient() {
     throw new Error("DATABASE_URL is required to initialize PrismaClient.");
   }
 
-  const adapter = globalForPrisma.prismaAdapter ?? new PrismaPg(connectionString);
+  // Add connection pool parameters for better stability
+  const poolUrl = connectionString.includes("?")
+    ? `${connectionString}&connection_limit=10&pool_timeout=20`
+    : `${connectionString}?connection_limit=10&pool_timeout=20`;
+
+  const adapter = globalForPrisma.prismaAdapter ?? new PrismaPg(poolUrl);
 
   if (process.env.NODE_ENV !== "production") {
     globalForPrisma.prismaAdapter = adapter;
@@ -23,6 +28,42 @@ function createPrismaClient() {
     adapter,
     log: process.env.NODE_ENV === "development" ? ["query", "warn", "error"] : ["error"],
   });
+}
+
+/**
+ * Retry a Prisma operation with exponential backoff
+ */
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries = 3,
+  baseDelay = 100
+): Promise<T> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Only retry on connection errors
+      const isConnectionError =
+        lastError.message?.includes("P1017") ||
+        lastError.message?.includes("ConnectionClosed") ||
+        lastError.message?.includes("connection") ||
+        lastError.message?.includes("timeout");
+
+      if (!isConnectionError || attempt === maxRetries - 1) {
+        throw lastError;
+      }
+
+      // Exponential backoff with jitter
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 100;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();

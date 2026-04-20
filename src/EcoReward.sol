@@ -1,44 +1,60 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title EcoReward
  * @dev The official Ecochain Reward Token (ECO).
- * Minting is restricted to authorized verifiers or the owner.
+ *
+ * Access control:
+ *  - DEFAULT_ADMIN_ROLE  — full admin; granted to deployer.
+ *  - MINTER_ROLE         — may call `mint`; grant to EcoVerifier + Staking.
+ *  - PAUSER_ROLE         — may call `pause` / `unpause`.
+ *
+ * Transfers are blocked while paused (including mints/burns).
  */
-contract EcoReward is ERC20, Ownable {
-    mapping(address => bool) public isVerifier;
+contract EcoReward is ERC20, AccessControl, Pausable {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    event VerifierSet(address indexed verifier, bool authorized);
-
-    constructor() ERC20("Ecochain Token", "ECO") Ownable(msg.sender) {
-        // Initial setup can be done here if needed.
-    }
-
-    modifier onlyAuthorized() {
-        require(msg.sender == owner() || isVerifier[msg.sender], "EcoReward: Not authorized");
-        _;
+    constructor() ERC20("Ecochain Token", "ECO") {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MINTER_ROLE, msg.sender);
+        _grantRole(PAUSER_ROLE, msg.sender);
     }
 
     /**
-     * @dev Sets the verification status of an address.
-     * @param verifier The address to authorize/revoke.
-     * @param authorized True to authorize, false to revoke.
+     * @dev Mint new ECO tokens. Caller must hold MINTER_ROLE.
      */
-    function setVerifier(address verifier, bool authorized) external onlyOwner {
-        isVerifier[verifier] = authorized;
-        emit VerifierSet(verifier, authorized);
-    }
-
-    /**
-     * @dev Mint new ECO tokens.
-     * @param to The address receiving the tokens.
-     * @param amount The amount of ECO (in wei units) to mint.
-     */
-    function mint(address to, uint256 amount) external onlyAuthorized {
+    function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) whenNotPaused {
         _mint(to, amount);
+    }
+
+    /**
+     * @dev Pause all token transfers, mints and burns.
+     */
+    function pause() external onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    /**
+     * @dev Resume token transfers.
+     */
+    function unpause() external onlyRole(PAUSER_ROLE) {
+        _unpause();
+    }
+
+    /**
+     * @dev Hook: block transfers while paused.
+     */
+    function _update(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override whenNotPaused {
+        super._update(from, to, amount);
     }
 }
