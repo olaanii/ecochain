@@ -28,6 +28,27 @@ services:
     networks:
       - eco-network
 
+  rapid-relayer:
+    image: ghcr.io/initia-labs/rapid-relayer:v1.0.8
+    working_dir: /usr/rapid-relayer
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    volumes:
+      - ./relayer-config.json:/usr/rapid-relayer/config.json:ro
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - METRIC_PORT=3002
+      - LOG_LEVEL=info
+      - CONFIGFILE=/usr/rapid-relayer/config.json
+      - RELAYER_KEY_ECOCHAIN105=test
+      - RELAYER_KEY_INITIATION2=test
+    networks:
+      - eco-network
+    extra_hosts:
+      - "localhost:host-gateway"
+
 volumes:
   db-data:
 

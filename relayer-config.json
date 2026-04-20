@@ -1,0 +1,39 @@
+{
+  "port": 3001,
+  "metricPort": 3002,
+  "logLevel": "info",
+  "chains": [
+    {
+      "chainId": "ecochain105",
+      "rpcUri": "http://192.168.70.12:26657",
+      "restUri": "http://192.168.70.12:1317",
+      "bech32Prefix": "init",
+      "gasPrice": "0.025uinit",
+      "wallets": [
+        {
+          "key": {
+            "type": "mnemonic",
+            "mnemonic": "extend anger tenant soon task target labor glue moment firm invite clump nut drop correct spoil injury category clerk"
+          },
+          "maxHandlePacket": 10
+        }
+      ]
+    },
+    {
+      "chainId": "initiation-2",
+      "rpcUri": "https://rpc.initiation-2.initia.xyz",
+      "restUri": "https://rest.initiation-2.initia.xyz",
+      "bech32Prefix": "init",
+      "gasPrice": "0.025uinit",
+      "wallets": [
+        {
+          "key": {
+            "type": "mnemonic",
+            "mnemonic": "extend anger tenant soon task target labor glue moment firm invite clump nut drop correct spoil injury category clerk"
+          },
+          "maxHandlePacket": 10
+        }
+      ]
+    }
+  ]
+}
