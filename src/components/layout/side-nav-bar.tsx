@@ -22,13 +22,13 @@ export function SideNavBar({ role = "user" }: SideNavBarProps) {
   return (
     <aside
       className={clsx(
-        "fixed left-0 top-0 z-40 hidden md:flex",
-        "h-full w-20 flex-col items-center justify-center",
-        "bg-[var(--color-surface-muted)] border-r border-[var(--color-border-subtle)]",
-        "pb-8 pt-20",
+        "fixed left-4 top-24 z-40 hidden md:flex",
+        "flex-col items-center",
+        "bg-[var(--color-surface-elevated)] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08)]",
+        "py-3 px-2",
       )}
     >
-      <nav className="flex flex-col items-center justify-center gap-3 py-4">
+      <nav className="flex flex-col items-center gap-2">
         {sections.map((section) => {
           const rootHrefs = ["/sponsor", "/admin"];
           const isActive =
