@@ -24,11 +24,11 @@ export function SideNavBar({ role = "user" }: SideNavBarProps) {
       className={clsx(
         "fixed left-0 top-0 z-40 hidden md:flex",
         "h-full w-20 flex-col items-center justify-center",
-        "bg-[#e4e9ea]",
+        "bg-[var(--color-surface-muted)] border-r border-[var(--color-border-subtle)]",
         "pb-8 pt-20",
       )}
     >
-      <nav className="flex flex-1 flex-col items-center justify-center gap-[52px]">
+      <nav className="flex flex-col items-center justify-center gap-3 py-4">
         {sections.map((section) => {
           const rootHrefs = ["/sponsor", "/admin"];
           const isActive =
@@ -44,16 +44,16 @@ export function SideNavBar({ role = "user" }: SideNavBarProps) {
               key={section.href}
               href={section.href}
               className={clsx(
-                "flex w-20 items-center justify-center py-5",
+                "flex h-10 w-10 items-center justify-center rounded-xl",
                 "transition-all duration-200",
                 isActive
-                  ? "scale-110 text-[#2d3435]"
-                  : "text-[#5a6061] hover:text-[#2d3435]",
+                  ? "bg-white text-[var(--color-brand-primary)] shadow-sm"
+                  : "text-[var(--color-text-muted)] hover:bg-white/50 hover:text-[var(--color-text-dark)]",
               )}
               title={section.label}
               aria-label={section.label}
             >
-              <Icon size={18} />
+              <Icon size={20} />
             </Link>
           );
         })}

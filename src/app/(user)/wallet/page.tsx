@@ -34,9 +34,9 @@ const transactions = [
 ];
 
 const typeStyle: Record<string, { icon: typeof ArrowUpRight; cls: string; prefix: string }> = {
-  earned: { icon: ArrowDownLeft, cls: "text-[#3b6934] bg-green-50", prefix: "+" },
-  staked: { icon: Lock, cls: "text-[#7a3b9c] bg-purple-50", prefix: "" },
-  unstaked: { icon: Unlock, cls: "text-[#2d6fa6] bg-blue-50", prefix: "+" },
+  earned: { icon: ArrowDownLeft, cls: "text-[var(--color-success)] bg-[var(--color-surface-muted)]", prefix: "+" },
+  staked: { icon: Lock, cls: "text-[var(--color-brand-tertiary)] bg-[var(--color-surface-muted)]", prefix: "" },
+  unstaked: { icon: Unlock, cls: "text-[var(--color-brand-secondary)] bg-[var(--color-surface-muted)]", prefix: "+" },
 };
 
 export default function WalletPage() {
@@ -59,14 +59,14 @@ export default function WalletPage() {
       {/* Balance cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Available", value: balance.available, icon: Coins, color: "text-[#3b6934]" },
-          { label: "Staked", value: balance.staked, icon: Lock, color: "text-[#7a3b9c]" },
-          { label: "Pending Rewards", value: balance.pendingRewards, icon: Clock, color: "text-[#a05c1a]" },
-          { label: "Total Balance", value: balance.total, icon: TrendingUp, color: "text-[#2d6fa6]" },
+          { label: "Available", value: balance.available, icon: Coins, color: "text-[var(--color-success)]" },
+          { label: "Staked", value: balance.staked, icon: Lock, color: "text-[var(--color-brand-tertiary)]" },
+          { label: "Pending Rewards", value: balance.pendingRewards, icon: Clock, color: "text-[var(--color-brand-accent)]" },
+          { label: "Total Balance", value: balance.total, icon: TrendingUp, color: "text-[var(--color-brand-secondary)]" },
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+            className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -80,7 +80,7 @@ export default function WalletPage() {
                   {s.value.toLocaleString()} ECO
                 </p>
               </div>
-              <div className={`rounded-xl bg-[#f2f4f4] p-2.5 ${s.color}`}>
+              <div className={`rounded-xl bg-[var(--color-surface-muted)] p-2.5 ${s.color}`}>
                 <s.icon size={18} />
               </div>
             </div>
@@ -107,10 +107,10 @@ export default function WalletPage() {
       </div>
 
       {tab === "history" && (
-        <div className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+        <div className="overflow-hidden rounded-2xl bg-[var(--color-surface-elevated)] shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#f2f4f4] text-left">
+              <tr className="border-b border-[var(--color-surface-muted)] text-left">
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Type</th>
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Task</th>
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Amount</th>
@@ -118,12 +118,12 @@ export default function WalletPage() {
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f2f4f4]">
+            <tbody className="divide-y divide-[var(--color-surface-muted)]">
               {transactions.map((tx) => {
                 const style = typeStyle[tx.type];
                 const Icon = style.icon;
                 return (
-                  <tr key={tx.id} className="transition-colors hover:bg-[#f9f9f9]">
+                  <tr key={tx.id} className="transition-colors hover:bg-[var(--color-surface)]">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className={`rounded-lg p-1.5 ${style.cls}`}>
@@ -133,14 +133,14 @@ export default function WalletPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-[var(--color-text-muted)]">{tx.task}</td>
-                    <td className={`px-6 py-4 font-semibold ${tx.amount > 0 ? "text-[#3b6934]" : "text-[var(--color-text-dark)]"}`}>
+                    <td className={`px-6 py-4 font-semibold ${tx.amount > 0 ? "text-[var(--color-success)]" : "text-[var(--color-text-dark)]"}`}>
                       {style.prefix}{Math.abs(tx.amount).toLocaleString()} ECO
                     </td>
                     <td className="px-6 py-4 text-[var(--color-text-muted)]">{tx.date}</td>
                     <td className="px-6 py-4">
                       <span className={clsx(
                         "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                        tx.status === "confirmed" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700",
+                        tx.status === "confirmed" ? "bg-[var(--color-surface-muted)] text-[var(--color-success)]" : "bg-[var(--color-surface-muted)] text-[var(--color-brand-accent)]",
                       )}>
                         {tx.status}
                       </span>
@@ -155,53 +155,53 @@ export default function WalletPage() {
 
       {tab === "staking" && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+          <div className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
             <h2 className="mb-4 text-base font-semibold text-[var(--color-text-dark)]">Staking Position</h2>
             <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-xl bg-[#f2f4f4] px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
                 <span className="text-sm text-[var(--color-text-muted)]">Staked Amount</span>
                 <span className="text-sm font-semibold text-[var(--color-text-dark)]">{balance.staked.toLocaleString()} ECO</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-[#f2f4f4] px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
                 <span className="text-sm text-[var(--color-text-muted)]">APY</span>
-                <span className="text-sm font-semibold text-[#3b6934]">8.2%</span>
+                <span className="text-sm font-semibold text-[var(--color-success)]">8.2%</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-[#f2f4f4] px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
                 <span className="text-sm text-[var(--color-text-muted)]">Lock Period</span>
                 <span className="text-sm font-semibold text-[var(--color-text-dark)]">30 days</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-[#f2f4f4] px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
                 <span className="text-sm text-[var(--color-text-muted)]">Unlocks</span>
                 <span className="text-sm font-semibold text-[var(--color-text-dark)]">May 15, 2026</span>
               </div>
             </div>
             <div className="mt-6 flex gap-3">
-              <button className="flex-1 rounded-xl bg-[#2d3435] py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-80">
+              <button className="flex-1 rounded-xl bg-[var(--color-text-dark)] py-2.5 text-sm font-medium text-[var(--color-text-inverse)] transition-opacity hover:opacity-80">
                 Stake More
               </button>
-              <button className="flex-1 rounded-xl border border-[var(--color-surface-muted,#e4e9ea)] py-2.5 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[#f2f4f4]">
+              <button className="flex-1 rounded-xl border border-[var(--color-surface-muted)] py-2.5 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[var(--color-surface-muted)]">
                 Unstake
               </button>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+          <div className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
             <h2 className="mb-4 text-base font-semibold text-[var(--color-text-dark)]">Rewards</h2>
             <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-xl bg-[#f2f4f4] px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
                 <span className="text-sm text-[var(--color-text-muted)]">Earned (Pending)</span>
-                <span className="text-sm font-semibold text-[#3b6934]">{balance.pendingRewards.toLocaleString()} ECO</span>
+                <span className="text-sm font-semibold text-[var(--color-success)]">{balance.pendingRewards.toLocaleString()} ECO</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-[#f2f4f4] px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
                 <span className="text-sm text-[var(--color-text-muted)]">Lifetime Staking Rewards</span>
                 <span className="text-sm font-semibold text-[var(--color-text-dark)]">312 ECO</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-[#f2f4f4] px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
                 <span className="text-sm text-[var(--color-text-muted)]">Next Payout</span>
                 <span className="text-sm font-semibold text-[var(--color-text-dark)]">Apr 22, 2026</span>
               </div>
             </div>
-            <button className="mt-6 w-full rounded-xl bg-[#3b6934] py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-80">
+            <button className="mt-6 w-full rounded-xl bg-[var(--color-success)] py-2.5 text-sm font-medium text-[var(--color-text-inverse)] transition-opacity hover:opacity-80">
               Claim Rewards
             </button>
           </div>
@@ -209,7 +209,7 @@ export default function WalletPage() {
       )}
 
       {/* Bridge link */}
-      <div className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+      <div className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-[var(--color-text-dark)]">Bridge ECO Tokens</h2>
@@ -219,7 +219,7 @@ export default function WalletPage() {
           </div>
           <a
             href="/bridge"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#f2f4f4] px-4 py-2.5 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[#e4e9ea]"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-surface-muted)] px-4 py-2.5 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[var(--color-border-hover)]"
           >
             Open Bridge <ExternalLink size={14} />
           </a>

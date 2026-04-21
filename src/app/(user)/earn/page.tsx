@@ -87,16 +87,16 @@ const tasks = [
 ];
 
 const difficultyStyle: Record<string, string> = {
-  easy: "bg-green-100 text-green-700",
-  medium: "bg-amber-100 text-amber-700",
-  hard: "bg-red-100 text-red-700",
+  easy: "bg-[var(--color-surface-muted)] text-[var(--color-success)]",
+  medium: "bg-[var(--color-surface-muted)] text-[var(--color-brand-accent)]",
+  hard: "bg-[var(--color-surface-muted)] text-[var(--color-error)]",
 };
 
 const categoryStyle: Record<string, string> = {
-  transit: "bg-blue-100 text-blue-700",
-  recycling: "bg-emerald-100 text-emerald-700",
-  energy: "bg-amber-100 text-amber-700",
-  community: "bg-purple-100 text-purple-700",
+  transit: "bg-[var(--color-surface-muted)] text-[var(--color-brand-secondary)]",
+  recycling: "bg-[var(--color-surface-muted)] text-[var(--color-success)]",
+  energy: "bg-[var(--color-surface-muted)] text-[var(--color-brand-accent)]",
+  community: "bg-[var(--color-surface-muted)] text-[var(--color-brand-tertiary)]",
 };
 
 export default function EarnPage() {
@@ -127,8 +127,8 @@ export default function EarnPage() {
             Complete eco-actions and earn ECO rewards.
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
-          <Coins size={16} className="text-[#3b6934]" />
+        <div className="hidden sm:flex items-center gap-2 rounded-2xl bg-[var(--color-surface-elevated)] px-4 py-2.5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+          <Coins size={16} className="text-[var(--color-success)]" />
           <span className="text-sm text-[var(--color-text-muted)]">Potential:</span>
           <span className="text-sm font-semibold text-[var(--color-text-dark)]">
             {totalPotential.toLocaleString()} ECO
@@ -139,14 +139,14 @@ export default function EarnPage() {
       {/* Quick stats */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {[
-          { label: "Available Tasks", value: "6", icon: Zap, color: "text-[#3b6934]" },
-          { label: "Your Completions", value: "14", icon: CheckCircle2, color: "text-[#2d6fa6]" },
-          { label: "Earned This Week", value: "1,200 ECO", icon: Coins, color: "text-[#7a3b9c]" },
-          { label: "Streak", value: "5 days", icon: Flame, color: "text-[#a05c1a]" },
+          { label: "Available Tasks", value: "6", icon: Zap, color: "text-[var(--color-success)]" },
+          { label: "Your Completions", value: "14", icon: CheckCircle2, color: "text-[var(--color-brand-secondary)]" },
+          { label: "Earned This Week", value: "1,200 ECO", icon: Coins, color: "text-[var(--color-brand-tertiary)]" },
+          { label: "Streak", value: "5 days", icon: Flame, color: "text-[var(--color-brand-accent)]" },
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-2xl bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+            className="rounded-2xl bg-[var(--color-surface-elevated)] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -160,7 +160,7 @@ export default function EarnPage() {
                   {s.value}
                 </p>
               </div>
-              <div className={`rounded-xl bg-[#f2f4f4] p-2.5 ${s.color}`}>
+              <div className={`rounded-xl bg-[var(--color-surface-muted)] p-2.5 ${s.color}`}>
                 <s.icon size={18} />
               </div>
             </div>
@@ -194,11 +194,11 @@ export default function EarnPage() {
             <Link
               key={task.id}
               href={`/discover/${task.id}`}
-              className="group flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+              className="group flex flex-col gap-4 rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-[#f2f4f4] p-2.5 text-[var(--color-text-muted)]">
+                  <div className="rounded-xl bg-[var(--color-surface-muted)] p-2.5 text-[var(--color-text-muted)]">
                     <Icon size={18} />
                   </div>
                   <div>

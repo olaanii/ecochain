@@ -73,7 +73,7 @@ export default function CommunityPage() {
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-2xl bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+            className="rounded-2xl bg-[var(--color-surface-elevated)] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -87,7 +87,7 @@ export default function CommunityPage() {
                   {s.value}
                 </p>
               </div>
-              <div className="rounded-xl bg-[#f2f4f4] p-2.5 text-[var(--color-text-muted)]">
+              <div className="rounded-xl bg-[var(--color-surface-muted)] p-2.5 text-[var(--color-text-muted)]">
                 <s.icon size={18} />
               </div>
             </div>
@@ -115,10 +115,10 @@ export default function CommunityPage() {
 
       {/* Content */}
       {activeTab === "leaderboard" && (
-        <div className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+        <div className="overflow-hidden rounded-2xl bg-[var(--color-surface-elevated)] shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#f2f4f4] text-left">
+              <tr className="border-b border-[var(--color-surface-muted)] text-left">
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Rank</th>
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">User</th>
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">ECO</th>
@@ -126,15 +126,15 @@ export default function CommunityPage() {
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Streak</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f2f4f4]">
+            <tbody className="divide-y divide-[var(--color-surface-muted)]">
               {leaderboard.map((user) => (
-                <tr key={user.rank} className="transition-colors hover:bg-[#f9f9f9]">
+                <tr key={user.rank} className="transition-colors hover:bg-[var(--color-surface)]">
                   <td className="px-6 py-4">
                     {user.rank <= 3 ? (
                       <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                        user.rank === 1 ? "bg-yellow-100 text-yellow-700" :
-                        user.rank === 2 ? "bg-gray-200 text-gray-700" :
-                        "bg-amber-100 text-amber-700"
+                        user.rank === 1 ? "bg-[var(--color-brand-accent)] text-[var(--color-text-inverse)]" :
+                        user.rank === 2 ? "bg-[var(--color-neutral-400)] text-[var(--color-text-inverse)]" :
+                        "bg-[var(--color-brand-accent)]/70 text-[var(--color-text-inverse)]"
                       }`}>
                         {user.rank}
                       </span>
@@ -143,10 +143,10 @@ export default function CommunityPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 font-medium text-[var(--color-text-dark)]">@{user.name}</td>
-                  <td className="px-6 py-4 text-[#3b6934] font-semibold">{user.eco.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-[var(--color-success)] font-semibold">{user.eco.toLocaleString()}</td>
                   <td className="px-6 py-4 text-[var(--color-text-muted)]">{user.tasks}</td>
                   <td className="px-6 py-4">
-                    <span className="flex items-center gap-1 text-[#a05c1a]">
+                    <span className="flex items-center gap-1 text-[var(--color-brand-accent)]">
                       <TrendingUp size={12} /> {user.streak} days
                     </span>
                   </td>
@@ -160,13 +160,13 @@ export default function CommunityPage() {
       {activeTab === "governance" && (
         <div className="space-y-4">
           {proposals.map((p) => (
-            <div key={p.id} className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+            <div key={p.id} className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
                   <div className={`rounded-xl p-2 ${
-                    p.status === "active" ? "bg-blue-100 text-blue-700" :
-                    p.status === "passed" ? "bg-green-100 text-green-700" :
-                    "bg-red-100 text-red-700"
+                    p.status === "active" ? "bg-[var(--color-surface-muted)] text-[var(--color-brand-secondary)]" :
+                    p.status === "passed" ? "bg-[var(--color-surface-muted)] text-[var(--color-success)]" :
+                    "bg-[var(--color-surface-muted)] text-[var(--color-error)]"
                   }`}>
                     <Vote size={16} />
                   </div>
@@ -178,9 +178,9 @@ export default function CommunityPage() {
                 </div>
                 <span className={clsx(
                   "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                  p.status === "active" ? "bg-blue-100 text-blue-700" :
-                  p.status === "passed" ? "bg-green-100 text-green-700" :
-                  "bg-red-100 text-red-700",
+                  p.status === "active" ? "bg-[var(--color-surface-muted)] text-[var(--color-brand-secondary)]" :
+                  p.status === "passed" ? "bg-[var(--color-surface-muted)] text-[var(--color-success)]" :
+                  "bg-[var(--color-surface-muted)] text-[var(--color-error)]",
                 )}>
                   {p.status}
                 </span>
@@ -191,9 +191,9 @@ export default function CommunityPage() {
                   <span>For: {p.votes.for}%</span>
                   <span>Against: {p.votes.against}%</span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-[#f2f4f4]">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
                   <div 
-                    className="h-full rounded-full bg-[#3b6934]"
+                    className="h-full rounded-full bg-[var(--color-success)]"
                     style={{ width: `${p.votes.for}%` }}
                   />
                 </div>
@@ -201,10 +201,10 @@ export default function CommunityPage() {
 
               {p.status === "active" && (
                 <div className="mt-4 flex gap-2">
-                  <button className="flex-1 rounded-xl bg-[#3b6934] py-2 text-sm font-medium text-white transition-opacity hover:opacity-80">
+                  <button className="flex-1 rounded-xl bg-[var(--color-success)] py-2 text-sm font-medium text-[var(--color-text-inverse)] transition-opacity hover:opacity-80">
                     Vote For
                   </button>
-                  <button className="flex-1 rounded-xl border border-[var(--color-surface-muted,#e4e9ea)] py-2 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[#f2f4f4]">
+                  <button className="flex-1 rounded-xl border border-[var(--color-surface-muted)] py-2 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[var(--color-surface-muted)]">
                     Vote Against
                   </button>
                 </div>
@@ -214,7 +214,7 @@ export default function CommunityPage() {
           
           <Link
             href="/governance"
-            className="flex items-center justify-center gap-2 rounded-xl bg-[#f2f4f4] px-4 py-3 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[#e4e9ea]"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[var(--color-border-hover)]"
           >
             View All Proposals <ArrowRight size={14} />
           </Link>
@@ -223,12 +223,12 @@ export default function CommunityPage() {
 
       {activeTab === "activity" && (
         <div className="space-y-4">
-          <div className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+          <div className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
             <h2 className="mb-4 text-sm font-semibold text-[var(--color-text-dark)]">Recent Activity</h2>
             <div className="space-y-4">
               {recentActivity.map((a) => (
                 <div key={a.id} className="flex items-center gap-3">
-                  <div className="rounded-full bg-[#f2f4f4] p-2 text-[var(--color-text-muted)]">
+                  <div className="rounded-full bg-[var(--color-surface-muted)] p-2 text-[var(--color-text-muted)]">
                     <Globe size={14} />
                   </div>
                   <div className="flex-1">
@@ -244,9 +244,9 @@ export default function CommunityPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+          <div className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-[#3b6934] p-3 text-white">
+              <div className="rounded-xl bg-[var(--color-success)] p-3 text-[var(--color-text-inverse)]">
                 <Star size={20} />
               </div>
               <div>
@@ -259,7 +259,7 @@ export default function CommunityPage() {
                 href="https://discord.gg/ecochain"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto rounded-xl bg-[#f2f4f4] px-4 py-2 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[#e4e9ea]"
+                className="ml-auto rounded-xl bg-[var(--color-surface-muted)] px-4 py-2 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[var(--color-border-hover)]"
               >
                 Join Discord
               </a>

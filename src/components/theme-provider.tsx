@@ -13,33 +13,22 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "light",
   storageKey = "ecochain-theme",
 }: ThemeProviderProps) {
   const { preferences, updatePreference } = useUserStore();
 
   useEffect(() => {
-    // Initialize theme from storage or default
-    const storedTheme = localStorage.getItem(storageKey) as Theme | null;
-    if (storedTheme) {
-      updatePreference("theme", storedTheme);
-    }
+    // Force light mode - always set to light
+    updatePreference("theme", "light");
+    localStorage.setItem(storageKey, "light");
   }, [storageKey, updatePreference]);
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove("light", "dark");
-
-    let theme: Theme = preferences.theme || defaultTheme;
-
-    if (theme === "system") {
-      theme = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-    }
-
-    root.classList.add(theme);
-  }, [preferences.theme, defaultTheme]);
+    root.classList.add("light");
+  }, []);
 
   return <>{children}</>;
 }
