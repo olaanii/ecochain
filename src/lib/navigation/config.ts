@@ -273,7 +273,7 @@ const adminSections: NavSection[] = [
 
 export function navigationFor(role: UserRole): NavigationConfig {
   const sections =
-    role === "sponsor"
+    role === "sponsor" || role === "sponsor_admin" || role === "sponsor_viewer"
       ? sponsorSections
       : role === "admin" || role === "owner"
         ? adminSections

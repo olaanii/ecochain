@@ -83,3 +83,18 @@ export function ShowForRole({
   const isPermitted = allowed.includes(role) || role === "owner";
   return <>{isPermitted ? children : denied}</>;
 }
+
+/**
+ * Helper functions for sponsor team sub-roles.
+ */
+export function isSponsorTeam(role: UserRole): boolean {
+  return role === "sponsor" || role === "sponsor_admin" || role === "sponsor_viewer";
+}
+
+export function isSponsorAdmin(role: UserRole): boolean {
+  return role === "sponsor" || role === "sponsor_admin" || role === "admin" || role === "owner";
+}
+
+export function isSponsorViewer(role: UserRole): boolean {
+  return isSponsorTeam(role) || role === "admin" || role === "owner";
+}

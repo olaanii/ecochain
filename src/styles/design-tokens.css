@@ -1,0 +1,194 @@
+/**
+ * Design Tokens — CSS Custom Properties for The Quiet Earth
+ * 
+ * These tokens provide a single source of truth for colors, spacing, typography,
+ * and other design values. They support light/dark themes and role-based overrides.
+ */
+
+:root {
+  /* ─── Colors ──────────────────────────────────────────────────────────────── */
+  
+  /* Brand colors */
+  --color-brand-primary: #3b6934;
+  --color-brand-primary-dark: #2d4f28;
+  --color-brand-secondary: #2d6fa6;
+  --color-brand-tertiary: #7a3b9c;
+  --color-brand-accent: #a05c1a;
+  
+  /* Semantic colors */
+  --color-success: #3b6934;
+  --color-warning: #a05c1a;
+  --color-error: #dc2626;
+  --color-info: #2d6fa6;
+  
+  /* Neutral scale */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f2f4f4;
+  --color-neutral-200: #e4e9ea;
+  --color-neutral-300: #c8d0d1;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #5a6061;
+  --color-neutral-600: #4a5152;
+  --color-neutral-700: #3d4445;
+  --color-neutral-800: #2d3435;
+  --color-neutral-900: #1a1f20;
+  
+  /* ─── Light Theme (default) ──────────────────────────────────────────────── */
+  --color-surface: #f9f9f9;
+  --color-surface-elevated: #ffffff;
+  --color-surface-muted: #e4e9ea;
+  
+  --color-text-dark: #2d3435;
+  --color-text-muted: #5a6061;
+  --color-text-inverse: #f9f9f9;
+  
+  --color-border: #e4e9ea;
+  --color-border-hover: #c8d0d1;
+  
+  /* ─── Typography ──────────────────────────────────────────────────────────── */
+  --font-heading: var(--font-heading, system-ui);
+  --font-body: var(--font-body, system-ui);
+  --font-mono: ui-monospace, monospace;
+  
+  /* Font sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  
+  /* Font weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* Line heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  
+  /* Letter spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  
+  /* ─── Spacing ─────────────────────────────────────────────────────────────── */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  
+  /* ─── Border Radius ───────────────────────────────────────────────────────── */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;
+  --radius-base: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+  
+  /* ─── Shadows ─────────────────────────────────────────────────────────────── */
+  --shadow-none: none;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-base: 0 1px 4px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  
+  /* ─── Transitions ─────────────────────────────────────────────────────────── */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+  
+  /* ─── Z-Index Scale ─────────────────────────────────────────────────────────── */
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+}
+
+/* ─── Dark Theme ─────────────────────────────────────────────────────────────── */
+.dark {
+  --color-surface: #1a1f20;
+  --color-surface-elevated: #2d3435;
+  --color-surface-muted: #3d4445;
+  
+  --color-text-dark: #f9f9f9;
+  --color-text-muted: #c8d0d1;
+  --color-text-inverse: #2d3435;
+  
+  --color-border: #3d4445;
+  --color-border-hover: #5a6061;
+  
+  /* Adjusted brand colors for dark mode */
+  --color-brand-primary: #4a7c3f;
+  --color-brand-secondary: #4a8bb8;
+  
+  /* Shadows adjusted for dark mode */
+  --shadow-base: 0 1px 4px rgb(0 0 0 / 0.2);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+}
+
+/* ─── Role-Based Theme Overrides ─────────────────────────────────────────────── */
+
+/* User role — default, no overrides */
+[data-role="user"] {
+  /* Uses default light/dark theme */
+}
+
+/* Sponsor role — amber accent theme */
+[data-role="sponsor"],
+[data-role="sponsor_admin"],
+[data-role="sponsor_viewer"] {
+  --color-brand-primary: #a05c1a;
+  --color-brand-primary-dark: #7a3b00;
+  --color-success: #3b6934;
+  --color-surface: #fefcf9;
+}
+
+.dark[data-role="sponsor"],
+.dark[data-role="sponsor_admin"],
+.dark[data-role="sponsor_viewer"] {
+  --color-surface: #1f1c18;
+  --color-surface-elevated: #2d2923;
+  --color-brand-primary: #c47d2a;
+}
+
+/* Admin/Owner role — authoritative red/blue theme */
+[data-role="admin"],
+[data-role="owner"] {
+  --color-brand-primary: #2d6fa6;
+  --color-brand-primary-dark: #1e4a6e;
+  --color-success: #3b6934;
+  --color-error: #dc2626;
+  --color-surface: #fafbfc;
+}
+
+.dark[data-role="admin"],
+.dark[data-role="owner"] {
+  --color-surface: #17191b;
+  --color-surface-elevated: #1f2327;
+  --color-brand-primary: #4a8bb8;
+  --color-error: #ef4444;
+}

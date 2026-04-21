@@ -2,7 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 
-export type UserRole = "user" | "sponsor" | "admin" | "owner";
+export type UserRole = "user" | "sponsor" | "sponsor_admin" | "sponsor_viewer" | "admin" | "owner";
 
 export function useUserRole(): { role: UserRole; isLoaded: boolean } {
   const { user, isLoaded } = useUser();

@@ -14,6 +14,7 @@ import { initiaConfig } from "@/lib/initia/config";
 import { NavigationProvider } from "@/contexts/navigation-context";
 import { WalletProvider } from "@/contexts/wallet-context";
 import { ThemeProvider } from "./theme-provider";
+import { RoleThemeWrapper } from "./role-theme-wrapper";
 import { Toaster } from "./ui/toast";
 
 const queryClient = new QueryClient({
@@ -48,8 +49,10 @@ export function AppProviders({ children }: AppProvidersProps) {
           <WalletProvider>
             <NavigationProvider>
               <ThemeProvider>
-                {children}
-                <Toaster />
+                <RoleThemeWrapper>
+                  {children}
+                  <Toaster />
+                </RoleThemeWrapper>
               </ThemeProvider>
             </NavigationProvider>
           </WalletProvider>

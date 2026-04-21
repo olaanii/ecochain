@@ -13,6 +13,7 @@ import { useWallet } from "@/contexts/wallet-context";
 import { hasClerkSetup } from "@/lib/runtime-config";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/notification-center";
+import { CommandPalette } from "@/components/command-palette";
 import type { UserRole } from "@/hooks/use-user-role";
 import { navigationFor, resolveSubNav } from "@/lib/navigation/config";
 
@@ -40,7 +41,10 @@ const landingNavItems: SubNavTab[] = [
 
 function getRoleBadge(role: UserRole) {
   if (role === "admin") return { label: "Admin", cls: "bg-red-100 text-red-700" };
+  if (role === "owner") return { label: "Owner", cls: "bg-red-100 text-red-700" };
   if (role === "sponsor") return { label: "Sponsor", cls: "bg-amber-100 text-amber-700" };
+  if (role === "sponsor_admin") return { label: "Admin", cls: "bg-amber-100 text-amber-700" };
+  if (role === "sponsor_viewer") return { label: "Viewer", cls: "bg-gray-100 text-gray-700" };
   return null;
 }
 
@@ -141,6 +145,7 @@ export function TopNavBar({
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <CommandPalette />
             <ThemeToggle />
             <NotificationCenter userId={user?.id} />
 

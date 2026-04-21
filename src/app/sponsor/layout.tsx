@@ -11,7 +11,8 @@ export default async function SponsorLayout({ children }: { children: ReactNode 
 
   const role = (user.publicMetadata?.role as string) ?? "user";
 
-  if (role !== "sponsor") {
+  const sponsorRoles = ["sponsor", "sponsor_admin", "sponsor_viewer"];
+  if (!sponsorRoles.includes(role)) {
     redirect("/dashboard");
   }
 

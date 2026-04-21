@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { AppProviders } from "@/components/providers";
 import { NavigationLoading } from "@/components/layout/navigation-loading";
+import { SkipLink } from "@/components/a11y";
 import { hasClerkSetup, runtimeConfig } from "@/lib/runtime-config";
 
 import "./globals.css";
@@ -27,7 +28,14 @@ export default function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const app = <AppProviders>{children}</AppProviders>;
+  const app = (
+    <AppProviders>
+      <SkipLink />
+      <div id="main-content" tabIndex={-1}>
+        {children}
+      </div>
+    </AppProviders>
+  );
 
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
