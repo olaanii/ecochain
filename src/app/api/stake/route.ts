@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createProtectedHandler, formatSuccessResponse, jsonResponse, AuthContext } from "@/lib/api/middleware";
 import { prisma } from "@/lib/prisma/client";
 import { STAKING_CONSTANTS, VALID_DURATIONS } from "@/lib/contracts/staking";
+import { validateCsrfToken } from "@/lib/security/csrf";
 
 /**
  * POST /api/stake
@@ -27,6 +28,19 @@ async function handleStake(
   request: NextRequest,
   context: { auth: AuthContext; requestId: string }
 ): Promise<NextResponse> {
+  // Validate CSRF token for state-changing operation
+  const csrfToken = request.headers.get("x-csrf-token");
+  if (!csrfToken || !(await validateCsrfToken(csrfToken))) {
+    return jsonResponse(
+      {
+        success: false,
+        error: { code: "CSRF_ERROR", message: "Invalid or missing CSRF token" },
+        meta: { timestamp: new Date().toISOString(), requestId: context.requestId },
+      },
+      403
+    );
+  }
+
   const body = await request.json();
   const clerkId = context.auth.userId;
 

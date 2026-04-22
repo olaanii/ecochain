@@ -5,12 +5,26 @@ import { rewardCatalog } from "@/lib/data/eco";
 import { createProtectedHandler, formatSuccessResponse, jsonResponse, AuthContext } from "@/lib/api/middleware";
 import { RedeemRequestSchema, validateRequestBody, formatValidationError } from "@/lib/api/schemas";
 import { prisma } from "@/lib/prisma/client";
+import { validateCsrfToken } from "@/lib/security/csrf";
 
-// Handler for POST /api/redeem with authentication and validation
+// Handler for POST /api/redeem with authentication, CSRF, and validation
 async function handleRedeem(
   request: NextRequest,
   context: { auth: AuthContext; requestId: string }
 ): Promise<NextResponse> {
+  // Validate CSRF token for state-changing operation
+  const csrfToken = request.headers.get("x-csrf-token");
+  if (!csrfToken || !(await validateCsrfToken(csrfToken))) {
+    return jsonResponse(
+      {
+        success: false,
+        error: { code: "CSRF_ERROR", message: "Invalid or missing CSRF token" },
+        meta: { timestamp: new Date().toISOString(), requestId: context.requestId },
+      },
+      403
+    );
+  }
+
   const body = await request.json();
   
   // Validate request body

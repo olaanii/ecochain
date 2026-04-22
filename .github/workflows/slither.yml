@@ -1,0 +1,82 @@
+name: Slither Analysis
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/slither.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/**'
+  schedule:
+    - cron: '0 3 * * 2'  # Weekly Tuesday 3am
+
+defaults:
+  run:
+    working-directory: contracts
+
+jobs:
+  slither:
+    name: Slither Static Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        run: |
+          forge install foundry-rs/forge-std --no-commit || true
+          forge install OpenZeppelin/openzeppelin-contracts --no-commit || true
+          forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit || true
+          forge install OpenZeppelin/openzeppelin-foundry-upgrades --no-commit || true
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.2
+        id: slither
+        with:
+          node-version: 20
+          target: 'contracts/'
+          slither-args: '--config-file slither.config.json --fail-none'
+          sarif: slither-results.sarif
+          fail-on: none
+
+      - name: Check High Severity Findings
+        run: |
+          # Parse SARIF and check for High severity
+          HIGH_COUNT=$(jq '[.runs[].results[] | select(.level == "error")] | length' slither-results.sarif)
+          echo "High severity findings: $HIGH_COUNT"
+          
+          if [ "$HIGH_COUNT" -gt 0 ]; then
+            echo "❌ High severity findings detected!"
+            jq '.runs[].results[] | select(.level == "error") | .message.text' slither-results.sarif
+            exit 1
+          fi
+          echo "✓ No High severity findings"
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: contracts/slither-results.sarif
+          category: slither
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: slither-results
+          path: contracts/slither-results.sarif

@@ -1,0 +1,173 @@
+name: Slither Analysis with Triage
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/slither-triage.yml'
+      - 'contracts/slither.db.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/**'
+  schedule:
+    - cron: '0 3 * * 2'  # Weekly Tuesday 3am
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  checks: write
+
+jobs:
+  slither-triage:
+    name: Slither Static Analysis with Triage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install Slither
+        run: pip3 install slither-analyzer
+
+      - name: Run Slither with triage mode
+        id: slither
+        run: |
+          # Run slither with JSON output for parsing
+          slither . \
+            --config-file slither.config.json \
+            --json slither-raw.json \
+            2>&1 || true
+          
+          # Check if we have results
+          if [ -f slither-raw.json ]; then
+            # Extract findings by severity
+            echo "findings=$(cat slither-raw.json | jq '.results | length' 2>/dev/null || echo '0')" >> $GITHUB_OUTPUT
+            
+            HIGH=$(cat slither-raw.json | jq '[.results[] | select(.impact == "High")] | length' 2>/dev/null || echo '0')
+            MEDIUM=$(cat slither-raw.json | jq '[.results[] | select(.impact == "Medium")] | length' 2>/dev/null || echo '0')
+            LOW=$(cat slither-raw.json | jq '[.results[] | select(.impact == "Low")] | length' 2>/dev/null || echo '0')
+            INFO=$(cat slither-raw.json | jq '[.results[] | select(.impact == "Informational")] | length' 2>/dev/null || echo '0')
+            
+            echo "high=$HIGH" >> $GITHUB_OUTPUT
+            echo "medium=$MEDIUM" >> $GITHUB_OUTPUT
+            echo "low=$LOW" >> $GITHUB_OUTPUT
+            echo "info=$INFO" >> $GITHUB_OUTPUT
+            
+            # Check for new (untriaged) findings
+            # Compare against slither.db.json
+            if [ -f slither.db.json ]; then
+              # Extract detector+contract+function combinations from triage
+              TRIAGED=$(cat slither.db.json | jq -r '.triage[] | "\(.detector):\(.contract):\(.function)"' 2>/dev/null | sort -u)
+              
+              # Extract current findings
+              CURRENT=$(cat slither-raw.json | jq -r '.results[] | "\(.check):\(.contract):\(.function)"' 2>/dev/null | sort -u)
+              
+              # Find new findings not in triage
+              NEW_FINDINGS=$(comm -23 <(echo "$CURRENT") <(echo "$TRIAGED") | wc -l)
+              echo "new_findings=$NEW_FINDINGS" >> $GITHUB_OUTPUT
+            else
+              echo "new_findings=$HIGH" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "findings=0" >> $GITHUB_OUTPUT
+            echo "high=0" >> $GITHUB_OUTPUT
+            echo "medium=0" >> $GITHUB_OUTPUT
+            echo "low=0" >> $GITHUB_OUTPUT
+            echo "info=0" >> $GITHUB_OUTPUT
+            echo "new_findings=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate SARIF for GitHub Security
+        run: |
+          slither . \
+            --config-file slither.config.json \
+            --sarif slither-results.sarif \
+            2>&1 || true
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: contracts/slither-results.sarif
+          category: slither
+
+      - name: Create Triage Report
+        run: |
+          cat > slither-triage-report.md << 'EOF'
+          # Slither Analysis Report
+          
+          ## Summary
+          
+          | Severity | Count | Status |
+          |----------|-------|--------|
+          | 🔴 High | ${{ steps.slither.outputs.high }} | ${{ steps.slither.outputs.high == '0' && '✅ Clean' || '❌ Review Required' }} |
+          | 🟠 Medium | ${{ steps.slither.outputs.medium }} | Triaged |
+          | 🟡 Low | ${{ steps.slither.outputs.low }} | Acknowledged |
+          | 🔵 Info | ${{ steps.slither.outputs.info }} | Documented |
+          
+          ## New Findings
+          
+          ${{ steps.slither.outputs.new_findings == '0' && '✅ No new untriaged findings' || format('⚠️ {0} new untriaged findings detected - review required', steps.slither.outputs.new_findings) }}
+          
+          ## Triage Database
+          
+          See [slither.db.json](./contracts/slither.db.json) for accepted/mitigated findings.
+          
+          ## Next Steps
+          
+          ${{ steps.slither.outputs.high > '0' && '- Address High severity findings immediately' || '' }}
+          ${{ steps.slither.outputs.new_findings > '0' && '- Review new findings and update triage database' || '' }}
+          - Update [SLITHER_TRIAGE.md](./SLITHER_TRIAGE.md) if findings status changes
+          EOF
+          
+          cat slither-triage-report.md
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('contracts/slither-triage-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: slither-results
+          path: |
+            contracts/slither-results.sarif
+            contracts/slither-raw.json
+            contracts/slither-triage-report.md
+
+      - name: Fail on High severity
+        if: steps.slither.outputs.high > 0
+        run: |
+          echo "❌ High severity findings detected: ${{ steps.slither.outputs.high }}"
+          cat slither-raw.json | jq '.results[] | select(.impact == "High")'
+          exit 1
+
+      - name: Warn on new untriaged findings
+        if: steps.slither.outputs.new_findings > 0
+        run: |
+          echo "::warning::${{ steps.slither.outputs.new_findings }} new untriaged findings detected. Please review and update slither.db.json"

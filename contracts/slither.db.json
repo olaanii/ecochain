@@ -1,0 +1,90 @@
+{
+  "triage": [
+    {
+      "id": "M-01",
+      "detector": "missing-uups-authorization",
+      "contract": "StakingV2",
+      "function": "_authorizeUpgrade",
+      "status": "accepted",
+      "severity": "Medium",
+      "reason": "TimelockController holds DEFAULT_ADMIN_ROLE; 2-day delay enforced",
+      "date_accepted": "2026-04-22",
+      "accepted_by": "security-team"
+    },
+    {
+      "id": "M-02",
+      "detector": "reentrancy-no-eth",
+      "contract": "EcoVerifierV2",
+      "function": "submitProof",
+      "status": "mitigated",
+      "severity": "Medium",
+      "reason": "CEI pattern enforced: state updates before external mint() call",
+      "date_accepted": "2026-04-22",
+      "accepted_by": "security-team"
+    },
+    {
+      "id": "M-03",
+      "detector": "reentrancy-no-eth",
+      "contract": "StakingV2",
+      "function": "unstake",
+      "status": "mitigated",
+      "severity": "Medium",
+      "reason": "ReentrancyGuardUpgradeable + CEI pattern; state updated before transfer",
+      "date_accepted": "2026-04-22",
+      "accepted_by": "security-team"
+    },
+    {
+      "id": "L-01",
+      "detector": "timestamp",
+      "contract": "StakingV2",
+      "function": "stake/unstake",
+      "status": "accepted",
+      "severity": "Low",
+      "reason": "block.timestamp sufficient for duration calculations; no time-critical security decisions",
+      "date_accepted": "2026-04-22",
+      "accepted_by": "security-team"
+    },
+    {
+      "id": "L-02",
+      "detector": "timestamp",
+      "contract": "EcoVerifierV2",
+      "function": "submitProof",
+      "status": "accepted",
+      "severity": "Low",
+      "reason": "block.timestamp used for nonce expiration; miner manipulation limited to ~15s",
+      "date_accepted": "2026-04-22",
+      "accepted_by": "security-team"
+    },
+    {
+      "id": "I-01",
+      "detector": "solc-version",
+      "contract": "All",
+      "status": "accepted",
+      "severity": "Informational",
+      "reason": "Using Solidity 0.8.28 for OpenZeppelin v5 compatibility",
+      "date_accepted": "2026-04-22"
+    },
+    {
+      "id": "I-02",
+      "detector": "naming-convention",
+      "contract": "EcoVerifierV2",
+      "status": "accepted",
+      "severity": "Informational",
+      "reason": "EIP712 domain name follows convention"
+    },
+    {
+      "id": "I-03",
+      "detector": "pragma",
+      "contract": "All",
+      "status": "accepted",
+      "severity": "Informational",
+      "reason": "Using ^0.8.28 for latest features and security fixes"
+    }
+  ],
+  "policy": {
+    "fail_on_high": true,
+    "fail_on_medium": false,
+    "max_new_findings": 0,
+    "review_period_days": 30
+  }
+}

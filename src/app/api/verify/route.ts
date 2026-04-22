@@ -6,12 +6,26 @@ import { createProtectedHandler, formatSuccessResponse, jsonResponse, AuthContex
 import { VerifyRequestSchema, validateRequestBody, formatValidationError } from "@/lib/api/schemas";
 import { prisma } from "@/lib/prisma/client";
 import { verifyProof } from "@/lib/verification";
+import { validateCsrfToken } from "@/lib/security/csrf";
 
-// Handler for POST /api/verify with authentication and validation
+// Handler for POST /api/verify with authentication, CSRF, and validation
 async function handleVerify(
   request: NextRequest,
   context: { auth: AuthContext; requestId: string }
 ): Promise<NextResponse> {
+  // Validate CSRF token for state-changing operation
+  const csrfToken = request.headers.get("x-csrf-token");
+  if (!csrfToken || !(await validateCsrfToken(csrfToken))) {
+    return jsonResponse(
+      {
+        success: false,
+        error: { code: "CSRF_ERROR", message: "Invalid or missing CSRF token" },
+        meta: { timestamp: new Date().toISOString(), requestId: context.requestId },
+      },
+      403
+    );
+  }
+
   const body = await request.json();
   
   // Validate request body

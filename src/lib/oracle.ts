@@ -1,4 +1,4 @@
-export type ProofType = "photo" | "transit" | "weight";
+export type ProofType = "photo" | "transit" | "weight" | "sensor";
 
 export type ProofMetadata = {
   proofType: ProofType;

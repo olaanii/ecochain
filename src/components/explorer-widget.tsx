@@ -5,25 +5,28 @@ import { Search, ExternalLink, Box, Activity, Shield, Users } from "lucide-react
 import { cn } from "@/lib/utils";
 
 interface BlockData {
-  number: number;
+  height: string;
   hash: string;
-  timestamp: number;
+  time: string;
   txCount: number;
+  proposer: string;
 }
 
 interface TransactionData {
   hash: string;
   from: string;
   to: string;
-  value: string;
-  timestamp: number;
+  amount: string;
+  denom: string;
+  status: "success" | "failed" | "pending";
+  time: string;
 }
 
 interface ValidatorData {
   address: string;
-  name: string;
-  stake: string;
-  status: "active" | "inactive";
+  moniker: string;
+  votingPower: string;
+  status: "active" | "inactive" | "jailed";
 }
 
 export function ExplorerWidget({ className }: { className?: string }) {
@@ -43,9 +46,22 @@ export function ExplorerWidget({ className }: { className?: string }) {
           fetch('/api/explorer/validators'),
         ]);
 
-        if (blocksRes.ok) setBlocks(await blocksRes.json());
-        if (txsRes.ok) setTransactions(await txsRes.json());
-        if (validatorsRes.ok) setValidators(await validatorsRes.json());
+        if (blocksRes.ok) {
+          const json = await blocksRes.json();
+          setBlocks(Array.isArray(json) ? json : json?.data?.blocks ?? []);
+        }
+        if (txsRes.ok) {
+          const json = await txsRes.json();
+          setTransactions(
+            Array.isArray(json) ? json : json?.data?.transactions ?? [],
+          );
+        }
+        if (validatorsRes.ok) {
+          const json = await validatorsRes.json();
+          setValidators(
+            Array.isArray(json) ? json : json?.data?.validators ?? [],
+          );
+        }
       } catch (error) {
         console.error("Failed to fetch explorer data:", error);
       } finally {

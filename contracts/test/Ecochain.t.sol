@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 import {EcoReward} from "../src/EcoReward.sol";
@@ -38,7 +38,7 @@ contract EcochainTest is Test {
         vm.startPrank(admin);
         token = new EcoReward(admin, CAP);
         verifier = new EcoVerifier(admin, oracle, address(token));
-        token.grantRole(token.MINTER_ROLE(), address(verifier));
+        token.grantRole(keccak256("MINTER_ROLE"), address(verifier));
         verifier.setTask(TASK, 10e18, 20e18, true);
         vm.stopPrank();
     }
@@ -202,7 +202,7 @@ contract EcochainTest is Test {
     function test_SupplyCap_Enforced() public {
         // Grant user MINTER_ROLE so we can probe the cap directly.
         vm.prank(admin);
-        token.grantRole(token.MINTER_ROLE(), user);
+        token.grantRole(keccak256("MINTER_ROLE"), user);
 
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(EcoReward.CapExceeded.selector, CAP + 1, CAP));

@@ -1,0 +1,64 @@
+title = "EcoChain Secret Detection Config"
+
+[[rules]]
+id = "clerk-secret-key"
+description = "Clerk Secret Key"
+regex = '''sk_test_[a-zA-Z0-9]{24,}'''
+tags = ["clerk", "api-key"]
+
+[[rules]]
+id = "clerk-publishable-key"
+description = "Clerk Publishable Key"
+regex = '''pk_test_[a-zA-Z0-9]{24,}'''
+tags = ["clerk", "api-key"]
+
+[[rules]]
+id = "database-url"
+description = "Database URL with credentials"
+regex = '''(postgres|postgresql|mysql)://[^:]+:[^@]+@'''
+tags = ["database", "credentials"]
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret"
+regex = '''(jwt|secret|private)[_-]?key["']?\s*[:=]\s*["']?[a-zA-Z0-9]{32,}'''
+tags = ["jwt", "secret"]
+
+[[rules]]
+id = "private-key"
+description = "Private Key PEM"
+regex = '''-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'''
+tags = ["private-key", "crypto"]
+
+[[rules]]
+id = "eth-private-key"
+description = "Ethereum Private Key"
+regex = '''0x[a-fA-F0-9]{64}'''
+tags = ["ethereum", "private-key"]
+
+[[rules]]
+id = "webhook-secret"
+description = "Webhook Secret"
+regex = '''whsec_[a-zA-Z0-9]{24,}'''
+tags = ["webhook", "secret"]
+
+[[rules]]
+id = "vapid-key"
+description = "VAPID Key for push notifications"
+regex = '''(VAPID|vapid)[_-]?(PUBLIC|PRIVATE)[_-]?KEY'''
+tags = ["vapid", "push", "api-key"]
+
+[allowlist]
+description = "Allowlist for test files and examples"
+paths = [
+  '''test''',
+  '''tests''',
+  '''__tests__''',
+  '''.env.example''',
+  '''.env.local.example''',
+]
+regexes = [
+  '''EXAMPLE_[A-Z_]+''',
+  '''DEMO_[A-Z_]+''',
+  '''PLACEHOLDER''',
+]

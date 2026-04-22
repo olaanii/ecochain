@@ -1,0 +1,22 @@
+{
+  "detectors_to_exclude": [],
+  "exclude_informational": false,
+  "exclude_low": false,
+  "exclude_medium": false,
+  "exclude_high": false,
+  "filter_paths": "lib|test|script|node_modules",
+  "compile_force_framework": "foundry",
+  "foundry_out_directory": "out",
+  "foundry_ignore_compile": false,
+  "legacy_erc20": false,
+  "solc": "0.8.28",
+  "solc_remaps": [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "forge-std/=lib/forge-std/src/",
+    "openzeppelin-foundry-upgrades/=lib/openzeppelin-foundry-upgrades/src/"
+  ],
+  "sarif": "slither-results.sarif",
+  "disable_color": false,
+  "triage": "slither.db.json"
+}

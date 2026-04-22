@@ -1,0 +1,171 @@
+name: Production Monitoring & Alerts
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # Every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  RPC_URL: ${{ secrets.RPC_URL }}
+  STAKING_CONTRACT: ${{ secrets.STAKING_CONTRACT }}
+  REWARD_CONTRACT: ${{ secrets.REWARD_CONTRACT }}
+  VERIFIER_CONTRACT: ${{ secrets.VERIFIER_CONTRACT }}
+
+jobs:
+  contract-health-check:
+    name: Contract Health Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Check contract balances
+        run: |
+          # Check Staking contract has sufficient reward tokens
+          STAKING_BALANCE=$(cast call $REWARD_CONTRACT "balanceOf(address)(uint256)" $STAKING_CONTRACT --rpc-url $RPC_URL 2>/dev/null || echo "0")
+          STAKING_BALANCE_ETH=$(cast from-wei $STAKING_BALANCE 2>/dev/null || echo "0")
+          
+          echo "staking_balance=$STAKING_BALANCE_ETH" >> $GITHUB_ENV
+          
+          # Alert if below threshold (1000 ECO)
+          THRESHOLD=$(cast to-wei 1000 2>/dev/null)
+          if [ "$STAKING_BALANCE" -lt "$THRESHOLD" ]; then
+            echo "::error::Staking contract balance low: $STAKING_BALANCE_ETH ECO"
+            echo "alert_staking_balance=true" >> $GITHUB_ENV
+          else
+            echo "alert_staking_balance=false" >> $GITHUB_ENV
+          fi
+
+      - name: Check pause status
+        run: |
+          # Check if contracts are paused
+          STAKING_PAUSED=$(cast call $STAKING_CONTRACT "paused()(bool)" --rpc-url $RPC_URL 2>/dev/null || echo "false")
+          REWARD_PAUSED=$(cast call $REWARD_CONTRACT "paused()(bool)" --rpc-url $RPC_URL 2>/dev/null || echo "false")
+          
+          echo "staking_paused=$STAKING_PAUSED" >> $GITHUB_ENV
+          echo "reward_paused=$REWARD_PAUSED" >> $GITHUB_ENV
+          
+          if [ "$STAKING_PAUSED" = "true" ] || [ "$REWARD_PAUSED" = "true" ]; then
+            echo "::warning::Contract(s) are paused"
+            echo "alert_paused=true" >> $GITHUB_ENV
+          else
+            echo "alert_paused=false" >> $GITHUB_ENV
+          fi
+
+      - name: Check total staked
+        run: |
+          TOTAL_STAKED=$(cast call $STAKING_CONTRACT "getTotalStaked()(uint256)" --rpc-url $RPC_URL 2>/dev/null || echo "0")
+          TOTAL_STAKED_ETH=$(cast from-wei $TOTAL_STAKED 2>/dev/null || echo "0")
+          
+          echo "total_staked=$TOTAL_STAKED_ETH" >> $GITHUB_ENV
+          echo "alert_total_staked=false" >> $GITHUB_ENV
+
+      - name: Generate health report
+        run: |
+          cat > health-report.md << EOF
+          # Contract Health Check Report
+          
+          **Run Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ## Staking Contract
+          - **Balance:** $staking_balance ECO
+          - **Paused:** $staking_paused
+          
+          ## Reward Token
+          - **Paused:** $reward_paused
+          
+          ## Metrics
+          - **Total Staked:** $total_staked ECO
+          
+          ## Alerts
+          ${{ env.alert_staking_balance == 'true' && '⚠️ Staking contract balance below 1000 ECO' || '✅ Staking balance healthy' }}
+          ${{ env.alert_paused == 'true' && '⚠️ Contract(s) currently paused' || '✅ Contracts active' }}
+          EOF
+          
+          cat health-report.md
+
+      - name: Create issue for alerts
+        if: env.alert_staking_balance == 'true' || env.alert_paused == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const alerts = [];
+            if (process.env.alert_staking_balance === 'true') {
+              alerts.push('Staking contract balance below 1000 ECO threshold');
+            }
+            if (process.env.alert_paused === 'true') {
+              alerts.push('Contract(s) are currently paused');
+            }
+            
+            const body = `## Contract Health Alert
+            
+            The following issues were detected during health monitoring:
+            
+            ${alerts.map(a => `- ⚠️ ${a}`).join('\n')}
+            
+            **Run:** ${{ github.run_id }}
+            **Time:** ${new Date().toISOString()}
+            `;
+            
+            // Check for existing open issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'alert,monitoring',
+              state: 'open'
+            });
+            
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Contract Health Alert',
+                body: body,
+                labels: ['alert', 'monitoring']
+              });
+            }
+
+  event-monitoring:
+    name: On-Chain Event Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          npm install -g ethers @ethersproject/providers
+
+      - name: Monitor recent events
+        run: |
+          cat > monitor-events.js << 'EOF'
+          const { ethers } = require('ethers');
+          
+          async function main() {
+            const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
+            
+            // Check for large unstakes (potential exit scam)
+            const currentBlock = await provider.getBlockNumber();
+            const fromBlock = currentBlock - 720; // ~2 hours
+            
+            console.log(`Monitoring blocks ${fromBlock} to ${currentBlock}`);
+            
+            // This is a placeholder - in production you'd:
+            // 1. Query for Staked/Unstaked events
+            // 2. Check for unusual patterns
+            // 3. Alert on suspicious activity
+            
+            console.log('Monitoring complete');
+          }
+          
+          main().catch(console.error);
+          EOF
+          
+          node monitor-events.js || true

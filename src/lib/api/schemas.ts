@@ -290,6 +290,60 @@ export const BridgeInitiateResponseSchema = z.object({
 
 export type BridgeInitiateResponse = z.infer<typeof BridgeInitiateResponseSchema>;
 
+// Aliases for simpler naming in OpenAPI
+export const BridgeRequestSchema = BridgeInitiateRequestSchema;
+export const BridgeResponseSchema = BridgeInitiateResponseSchema;
+
+// ============================================================================
+// Staking API Schemas
+// ============================================================================
+
+export const StakeRequestSchema = z.object({
+  amount: z.number().positive().describe("Amount to stake in ECO tokens"),
+  lockPeriodDays: z
+    .number()
+    .int()
+    .min(30)
+    .max(365)
+    .describe("Lock period in days (30-365)"),
+  autoCompound: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Auto-compound rewards"),
+});
+
+export type StakeRequest = z.infer<typeof StakeRequestSchema>;
+
+export const StakeResponseSchema = z.object({
+  stakeId: z.string().describe("Unique stake identifier"),
+  amount: z.number().describe("Staked amount"),
+  lockPeriodDays: z.number().describe("Lock period in days"),
+  startDate: z.string().describe("ISO 8601 stake start date"),
+  endDate: z.string().describe("ISO 8601 stake end date"),
+  status: z.enum(["active", "pending", "unstaking"]).describe("Stake status"),
+  estimatedRewards: z.number().describe("Estimated rewards at maturity"),
+});
+
+export type StakeResponse = z.infer<typeof StakeResponseSchema>;
+
+// ============================================================================
+// Pagination Utilities
+// ============================================================================
+
+export const PaginatedResponseSchema = z.object({
+  data: z.array(z.record(z.unknown())).describe("Paginated data array"),
+  pagination: z.object({
+    total: z.number().int().nonnegative().describe("Total items available"),
+    limit: z.number().int().positive().describe("Items per page"),
+    offset: z.number().int().nonnegative().describe("Current offset"),
+    hasMore: z.boolean().describe("Whether more items available"),
+    nextOffset: z.number().int().optional().describe("Offset for next page"),
+  }),
+});
+
+export type PaginatedResponse = z.infer<typeof PaginatedResponseSchema>;
+
 // ============================================================================
 // Validation Helper Functions
 // ============================================================================
