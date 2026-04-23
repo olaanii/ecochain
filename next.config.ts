@@ -3,6 +3,7 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  turbopack: {},
   experimental: {
     workerThreads: true,
     cpus: 1,

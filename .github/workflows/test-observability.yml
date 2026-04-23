@@ -39,6 +39,21 @@ jobs:
           forge coverage --report lcov
           genhtml -o coverage-report --branch-coverage --demangle-cpp lcov.info || true
 
+      - name: Enforce coverage threshold (>= 95%)
+        run: |
+          # Extract coverage percentage from lcov
+          LINE_COVERED=$(grep "LF:" lcov.info | cut -d: -f2 | awk '{sum+=$1} END {print sum}')
+          LINE_HIT=$(grep "LH:" lcov.info | cut -d: -f2 | awk '{sum+=$1} END {print sum}')
+          if [ -n "$LINE_COVERED" ] && [ -n "$LINE_HIT" ] && [ "$LINE_COVERED" -gt 0 ]; then
+            COVERAGE=$(($LINE_HIT * 100 / $LINE_COVERED))
+            echo "Line coverage: $COVERAGE%"
+            if [ $COVERAGE -lt 95 ]; then
+              echo "❌ Coverage $COVERAGE% is below threshold of 95%"
+              exit 1
+            fi
+            echo "✅ Coverage meets threshold (>= 95%)"
+          fi
+
       - name: Parse test metrics
         id: metrics
         run: |

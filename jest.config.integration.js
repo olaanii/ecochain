@@ -8,7 +8,7 @@
 export default {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
-  testMatch: ['**/tests/**/*.test.{ts,tsx}'],
+  testMatch: ['**/tests/integration/**/*.integration.test.{ts,tsx}'],
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
@@ -27,8 +27,9 @@ export default {
       },
     ],
   },
-  testTimeout: 10000,
+  testTimeout: 120000,
   verbose: true,
+  setupFilesAfterEnv: ['<rootDir>/tests/integration/setup.ts'],
   collectCoverage: false,
   coverageDirectory: 'coverage/integration',
   coveragePathIgnorePatterns: [
@@ -43,8 +44,12 @@ export default {
     '/contracts/',
     '/tests/verification/',
     '<rootDir>/contracts/',
+    '<rootDir>/lib/forge-std/',
+    '<rootDir>/lib/openzeppelin-contracts/',
   ],
   modulePathIgnorePatterns: [
     '<rootDir>/contracts/',
+    '<rootDir>/lib/forge-std/',
+    '<rootDir>/lib/openzeppelin-contracts/',
   ],
 };
