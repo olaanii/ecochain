@@ -3,7 +3,7 @@
 import { AdminShell } from "@/components/layout/admin-shell";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Globe, CheckCircle2, XCircle, RotateCcw, MoreHorizontal } from "lucide-react";
+import { Globe, CheckCircle2, XCircle, RotateCcw, MoreHorizontal, FileText } from "lucide-react";
 import clsx from "clsx";
 
 interface Sponsor {
@@ -13,7 +13,27 @@ interface Sponsor {
   initiaAddress: string;
   role: string;
   createdAt: string;
-  _count: { verifications: number };
+  _count?: { verifications: number };
+}
+
+interface SponsorRequest {
+  id: string;
+  userId: string;
+  clerkId: string;
+  businessName: string;
+  contactInfo: string;
+  reason: string;
+  status: string;
+  createdAt: string;
+  user: {
+    id: string;
+    displayName: string | null;
+    username: string | null;
+    initiaAddress: string;
+    email: string | null;
+    role: string;
+    createdAt: string;
+  };
 }
 
 const filterTabs = [
@@ -25,8 +45,9 @@ const filterTabs = [
 export default function AdminSponsorsPage() {
   const params = useSearchParams();
   const filter = params.get("filter") ?? "all";
-  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [items, setItems] = useState<(Sponsor | SponsorRequest)[]>([]);
   const [total, setTotal] = useState(0);
+  const [itemsType, setItemsType] = useState<"users" | "requests">("users");
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
 
@@ -34,18 +55,26 @@ export default function AdminSponsorsPage() {
     setLoading(true);
     fetch(`/api/admin/sponsors?filter=${filter}`)
       .then((r) => r.json())
-      .then((d) => { setSponsors(d.items ?? []); setTotal(d.total ?? 0); })
+      .then((d) => { 
+        setItems(d.items ?? []); 
+        setTotal(d.total ?? 0);
+        setItemsType(d.type ?? "users");
+      })
       .finally(() => setLoading(false));
   }, [filter]);
 
-  async function handleAction(sponsorId: string, action: "approve" | "reject" | "revoke") {
-    setActing(sponsorId);
+  async function handleAction(id: string, action: "approve" | "reject" | "revoke", requestId?: string) {
+    setActing(id);
     await fetch("/api/admin/sponsors", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sponsorId, action }),
+      body: JSON.stringify({ 
+        sponsorId: requestId ? undefined : id,
+        requestId,
+        action,
+      }),
     });
-    setSponsors((prev) => prev.filter((s) => s.id !== sponsorId));
+    setItems((prev) => prev.filter((s) => s.id !== id));
     setActing(null);
   }
 
@@ -89,7 +118,7 @@ export default function AdminSponsorsPage() {
                 <div key={i} className="h-10 animate-pulse rounded-xl bg-[#f2f4f4]" />
               ))}
             </div>
-          ) : sponsors.length === 0 ? (
+          ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <Globe size={32} className="text-[#c8d0d1]" />
               <p className="text-sm text-[#5a6061]">No sponsors found.</p>
@@ -98,7 +127,12 @@ export default function AdminSponsorsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#f2f4f4] text-left">
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#5a6061]">Name</th>
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#5a6061]">
+                    {itemsType === "requests" ? "Business / User" : "Name"}
+                  </th>
+                  {itemsType === "requests" && (
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#5a6061]">Contact</th>
+                  )}
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#5a6061]">Address</th>
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#5a6061]">Status</th>
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#5a6061]">Joined</th>
@@ -106,60 +140,102 @@ export default function AdminSponsorsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f2f4f4]">
-                {sponsors.map((s) => (
-                  <tr key={s.id} className="group transition-colors hover:bg-[#f9f9f9]">
-                    <td className="px-6 py-4 font-medium text-[#2d3435]">
-                      {s.displayName ?? s.username ?? "—"}
-                    </td>
-                    <td className="px-6 py-4 font-mono text-xs text-[#5a6061]">
-                      {s.initiaAddress.slice(0, 16)}…
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={clsx(
-                        "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                        s.role === "sponsor" ? "bg-green-100 text-green-700" :
-                        s.role === "rejected_sponsor" ? "bg-red-100 text-red-700" :
-                        "bg-amber-100 text-amber-700",
-                      )}>
-                        {s.role === "pending_sponsor" ? "pending" : s.role === "rejected_sponsor" ? "rejected" : s.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-[#5a6061]">
-                      {new Date(s.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {s.role !== "sponsor" && (
-                          <button
-                            disabled={acting === s.id}
-                            onClick={() => handleAction(s.id, "approve")}
-                            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
-                          >
-                            <CheckCircle2 size={13} /> Approve
-                          </button>
-                        )}
-                        {s.role !== "rejected_sponsor" && (
-                          <button
-                            disabled={acting === s.id}
-                            onClick={() => handleAction(s.id, "reject")}
-                            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-                          >
-                            <XCircle size={13} /> Reject
-                          </button>
-                        )}
-                        {s.role === "sponsor" && (
-                          <button
-                            disabled={acting === s.id}
-                            onClick={() => handleAction(s.id, "revoke")}
-                            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-[#5a6061] hover:bg-[#f2f4f4] disabled:opacity-50"
-                          >
-                            <RotateCcw size={13} /> Revoke
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {items.map((item) => {
+                  const isRequest = itemsType === "requests";
+                  const request = isRequest ? item as SponsorRequest : null;
+                  const sponsor = isRequest ? request!.user : item as Sponsor;
+                  const id = isRequest ? request!.id : sponsor.id;
+                  const displayName = isRequest 
+                    ? request!.businessName 
+                    : (sponsor.displayName ?? sponsor.username ?? "—");
+                  const address = isRequest ? request!.user.initiaAddress : sponsor.initiaAddress;
+                  const status = isRequest ? request!.status : sponsor.role;
+                  const createdAt = isRequest ? request!.createdAt : sponsor.createdAt;
+
+                  return (
+                    <tr key={id} className="group transition-colors hover:bg-[#f9f9f9]">
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium text-[#2d3435]">{displayName}</p>
+                          {isRequest && (
+                            <p className="text-xs text-[#5a6061]">{sponsor.displayName ?? sponsor.email ?? "—"}</p>
+                          )}
+                        </div>
+                      </td>
+                      {isRequest && (
+                        <td className="px-6 py-4 text-xs text-[#5a6061]">{request!.contactInfo}</td>
+                      )}
+                      <td className="px-6 py-4 font-mono text-xs text-[#5a6061]">
+                        {address.slice(0, 16)}…
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={clsx(
+                          "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                          status === "sponsor" || status === "approved" ? "bg-green-100 text-green-700" :
+                          status === "rejected" || status === "rejected_sponsor" ? "bg-red-100 text-red-700" :
+                          "bg-amber-100 text-amber-700",
+                        )}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-[#5a6061]">
+                        {new Date(createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {isRequest ? (
+                            <>
+                              <button
+                                disabled={acting === id}
+                                onClick={() => handleAction(sponsor.id, "approve", id)}
+                                className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+                              >
+                                <CheckCircle2 size={13} /> Approve
+                              </button>
+                              <button
+                                disabled={acting === id}
+                                onClick={() => handleAction(sponsor.id, "reject", id)}
+                                className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                              >
+                                <XCircle size={13} /> Reject
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {sponsor.role !== "sponsor" && (
+                                <button
+                                  disabled={acting === id}
+                                  onClick={() => handleAction(id, "approve")}
+                                  className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+                                >
+                                  <CheckCircle2 size={13} /> Approve
+                                </button>
+                              )}
+                              {sponsor.role !== "rejected_sponsor" && (
+                                <button
+                                  disabled={acting === id}
+                                  onClick={() => handleAction(id, "reject")}
+                                  className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                >
+                                  <XCircle size={13} /> Reject
+                                </button>
+                              )}
+                              {sponsor.role === "sponsor" && (
+                                <button
+                                  disabled={acting === id}
+                                  onClick={() => handleAction(id, "revoke")}
+                                  className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-[#5a6061] hover:bg-[#f2f4f4] disabled:opacity-50"
+                                >
+                                  <RotateCcw size={13} /> Revoke
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

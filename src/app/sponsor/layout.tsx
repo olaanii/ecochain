@@ -1,19 +1,28 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
+import { getCurrentDbUser } from "@/lib/auth/current-user";
 import type { ReactNode } from "react";
 
 export default async function SponsorLayout({ children }: { children: ReactNode }) {
-  const user = await currentUser();
+  const { userId } = await auth();
 
-  if (!user) {
+  if (!userId) {
+    redirect("/sign-in");
+  }
+
+  const dbUser = await getCurrentDbUser();
+
+  if (!dbUser) {
     redirect("/onboarding");
   }
 
-  const role = (user.publicMetadata?.role as string) ?? "user";
-
-  const sponsorRoles = ["sponsor", "sponsor_admin", "sponsor_viewer"];
-  if (!sponsorRoles.includes(role)) {
+  if (dbUser.role !== "sponsor") {
     redirect("/dashboard");
+  }
+
+  // Check if user has initiaAddress (wallet connected)
+  if (!dbUser.initiaAddress) {
+    redirect("/wallet-connect?redirect=/sponsor");
   }
 
   return <>{children}</>;

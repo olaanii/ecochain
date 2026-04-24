@@ -13,10 +13,43 @@ export async function GET(request: NextRequest) {
   const cursor = searchParams.get("cursor") ?? undefined;
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 100);
 
-  const where: Record<string, unknown> = { role: "sponsor" };
+  // For pending filter, show SponsorRequest entries
   if (filter === "pending") {
-    where.role = "pending_sponsor";
-  } else if (filter === "rejected") {
+    const where: Record<string, unknown> = { status: "pending" };
+    
+    const [requests, total] = await Promise.all([
+      prisma.sponsorRequest.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              username: true,
+              initiaAddress: true,
+              email: true,
+              role: true,
+              createdAt: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      prisma.sponsorRequest.count({ where }),
+    ]);
+
+    const hasMore = requests.length > limit;
+    const items = hasMore ? requests.slice(0, limit) : requests;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    return NextResponse.json({ items, nextCursor, total, type: "requests" });
+  }
+
+  // For other filters, show User entries with sponsor roles
+  const where: Record<string, unknown> = { role: "sponsor" };
+  if (filter === "rejected") {
     where.role = "rejected_sponsor";
   }
 
@@ -43,7 +76,7 @@ export async function GET(request: NextRequest) {
   const items = hasMore ? sponsors.slice(0, limit) : sponsors;
   const nextCursor = hasMore ? items[items.length - 1].id : null;
 
-  return NextResponse.json({ items, nextCursor, total });
+  return NextResponse.json({ items, nextCursor, total, type: "users" });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -52,9 +85,12 @@ export async function PATCH(request: NextRequest) {
   const roleErr = requireRole(actor, ["admin", "owner"]);
   if (roleErr) return roleErr;
 
-  const { sponsorId, action } = await request.json();
-  if (!sponsorId || !action) {
-    return NextResponse.json({ error: "sponsorId and action required" }, { status: 400 });
+  const { sponsorId, action, requestId } = await request.json();
+  if (!sponsorId && !requestId) {
+    return NextResponse.json({ error: "sponsorId or requestId required" }, { status: 400 });
+  }
+  if (!action) {
+    return NextResponse.json({ error: "action required" }, { status: 400 });
   }
 
   const roleMap: Record<string, string> = {
@@ -66,6 +102,52 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "action must be approve|reject|revoke" }, { status: 400 });
   }
 
+  // If requestId is provided, handle SponsorRequest approval/rejection
+  if (requestId) {
+    const requestRecord = await prisma.sponsorRequest.findUnique({
+      where: { id: requestId },
+      include: { user: true },
+    });
+
+    if (!requestRecord) {
+      return NextResponse.json({ error: "Sponsor request not found" }, { status: 404 });
+    }
+
+    // Update request status
+    await prisma.sponsorRequest.update({
+      where: { id: requestId },
+      data: {
+        status: action === "approve" ? "approved" : "rejected",
+        reviewedBy: actor.id,
+        reviewedAt: new Date(),
+      },
+    });
+
+    // If approving, also update user role
+    if (action === "approve") {
+      await prisma.user.update({
+        where: { id: requestRecord.userId },
+        data: { role: "sponsor" },
+      });
+    }
+
+    const { writeAuditLog, AuditActions } = await import("@/lib/audit/log");
+    await writeAuditLog({
+      actorId: actor.clerkId,
+      action: action === "approve" ? AuditActions.SPONSOR_APPROVED : AuditActions.SPONSOR_REJECTED,
+      resource: "SponsorRequest",
+      resourceId: requestId,
+      payload: { 
+        userId: requestRecord.userId,
+        after: { status: action === "approve" ? "approved" : "rejected" },
+      },
+      req: request,
+    });
+
+    return NextResponse.json({ success: true });
+  }
+
+  // Otherwise, handle direct user role change (existing behavior)
   const updated = await prisma.user.update({
     where: { id: sponsorId },
     data: { role: roleMap[action] },

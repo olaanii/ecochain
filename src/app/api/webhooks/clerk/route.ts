@@ -39,13 +39,17 @@ export async function POST(request: NextRequest) {
         const displayName =
           [firstName, lastName].filter(Boolean).join(" ") || email.split("@")[0];
 
+        // Check if this is the first user - make them admin
+        const userCount = await prisma.user.count();
+        const role = userCount === 0 ? "admin" : "user";
+
         await prisma.user.upsert({
           where: { clerkId: data.id as string },
           create: {
             clerkId: data.id as string,
             email,
             displayName,
-            role: "user",
+            role,
           },
           update: { email, displayName },
         });
