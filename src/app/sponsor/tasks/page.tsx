@@ -1,18 +1,23 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { SponsorShell } from "@/components/layout/sponsor-shell";
-import { Plus, Search, MoreHorizontal } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 
-const tasks = [
-  { id: "1", name: "Tree Planting Drive", category: "community", reward: 150, completions: 234, status: "active", ends: "May 12, 2026" },
-  { id: "2", name: "Urban Cycling Challenge", category: "transit", reward: 200, completions: 89, status: "active", ends: "Jun 1, 2026" },
-  { id: "3", name: "Home Energy Audit", category: "energy", reward: 300, completions: 12, status: "draft", ends: "—" },
-  { id: "4", name: "Beach Cleanup Q1", category: "community", reward: 100, completions: 512, status: "ended", ends: "Mar 31, 2026" },
-  { id: "5", name: "Recycling Sprint", category: "recycling", reward: 120, completions: 301, status: "ended", ends: "Feb 28, 2026" },
-];
+interface Task {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  baseReward: number;
+  verificationMethod: string;
+  active: boolean;
+  createdAt: string;
+}
 
 const statusColor: Record<string, string> = {
   active: "bg-green-100 text-green-700",
@@ -23,10 +28,39 @@ const statusColor: Record<string, string> = {
 export default function SponsorTasksPage() {
   const params = useSearchParams();
   const filter = params.get("status") ?? "active";
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const res = await fetch('/api/tasks?limit=50');
+        const data = await res.json();
+        if (data.success) {
+          setTasks(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch tasks:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, []);
 
   const filtered = tasks.filter((t) =>
-    filter === "active" ? t.status === "active" : t.status === filter
+    filter === "active" ? t.active : !t.active
   );
+
+  if (loading) {
+    return (
+      <SponsorShell>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+        </div>
+      </SponsorShell>
+    );
+  }
 
   return (
     <SponsorShell>
@@ -77,25 +111,42 @@ export default function SponsorTasksPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f2f4f4]">
-              {filtered.map((task) => (
-                <tr key={task.id} className="group transition-colors hover:bg-[#f9f9f9]">
-                  <td className="px-6 py-4 font-medium text-[#2d3435]">{task.name}</td>
-                  <td className="px-6 py-4 capitalize text-[#5a6061]">{task.category}</td>
-                  <td className="px-6 py-4 text-[#5a6061]">{task.reward} ECO</td>
-                  <td className="px-6 py-4 text-[#5a6061]">{task.completions.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-[#5a6061]">{task.ends}</td>
-                  <td className="px-6 py-4">
-                    <span className={clsx("rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", statusColor[task.status])}>
-                      {task.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="rounded-lg p-1 text-[#5a6061] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[#e4e9ea]">
-                      <MoreHorizontal size={16} />
-                    </button>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-[#5a6061]">
+                    No tasks found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((task) => (
+                  <tr key={task.id}>
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-[#2d3435]">{task.name}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 capitalize text-[#5a6061]">{task.category}</td>
+                    <td className="px-6 py-4 font-medium text-[#2d3435]">{task.baseReward} ECO</td>
+                    <td className="px-6 py-4 text-[#5a6061]">—</td>
+                    <td className="px-6 py-4 text-[#5a6061]">{new Date(task.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={clsx(
+                          "rounded-full px-2.5 py-1 text-xs font-medium",
+                          task.active ? statusColor.active : statusColor.ended
+                        )}
+                      >
+                        {task.active ? "active" : "ended"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button className="text-[#5a6061] hover:text-[#2d3435]">
+                        <MoreHorizontal size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
           {filtered.length === 0 && (

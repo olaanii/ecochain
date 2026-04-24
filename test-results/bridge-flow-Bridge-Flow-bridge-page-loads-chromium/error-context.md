@@ -12,7 +12,11 @@
 # Error details
 
 ```
-TimeoutError: page.goto: Timeout 30000ms exceeded.
+Test timeout of 60000ms exceeded.
+```
+
+```
+TimeoutError: page.goto: Timeout 60000ms exceeded.
 Call log:
   - navigating to "http://localhost:3000/bridge", waiting until "commit"
 
@@ -30,20 +34,20 @@ Call log:
   7  |  */
   8  | test.describe('Bridge Flow', () => {
   9  |   test('bridge page loads', async ({ page }) => {
-> 10 |     const response = await page.goto('/bridge', { waitUntil: 'commit', timeout: 30000 });
-     |                                 ^ TimeoutError: page.goto: Timeout 30000ms exceeded.
+> 10 |     const response = await page.goto('/bridge', { waitUntil: 'commit', timeout: 60000 });
+     |                                 ^ TimeoutError: page.goto: Timeout 60000ms exceeded.
   11 |     expect(response?.status()).toBeLessThan(500);
   12 |     console.log('Bridge page loaded, status:', response?.status());
   13 |   });
   14 | 
   15 |   test('bridge history page loads', async ({ page }) => {
-  16 |     const response = await page.goto('/bridge/history', { waitUntil: 'commit', timeout: 30000 });
+  16 |     const response = await page.goto('/bridge/history', { waitUntil: 'commit', timeout: 60000 });
   17 |     expect(response?.status()).toBeLessThan(500);
   18 |     console.log('Bridge history page loaded, status:', response?.status());
   19 |   });
   20 | 
   21 |   test('cross-chain page loads', async ({ page }) => {
-  22 |     const response = await page.goto('/cross-chain', { waitUntil: 'commit', timeout: 30000 });
+  22 |     const response = await page.goto('/cross-chain', { waitUntil: 'commit', timeout: 60000 });
   23 |     expect(response?.status()).toBeLessThan(500);
   24 |     console.log('Cross-chain page loaded, status:', response?.status());
   25 |   });

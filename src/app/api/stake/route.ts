@@ -6,11 +6,54 @@ import { createProtectedHandler, formatSuccessResponse, jsonResponse, AuthContex
 import { prisma } from "@/lib/prisma/client";
 import { STAKING_CONSTANTS, VALID_DURATIONS } from "@/lib/contracts/staking";
 import { validateCsrfToken } from "@/lib/security/csrf";
+import { getCurrentDbUser } from "@/lib/auth/current-user";
+
+/**
+ * GET /api/stake
+ * List user's active stakes
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const user = await getCurrentDbUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const stakes = await prisma.stake.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({
+      success: true,
+      stakes: stakes.map((s: { id: any; amount: any; apy: any; startTime: { toISOString: () => any; }; duration: any; endTime: { toISOString: () => any; }; status: any; accruedRewards: any; transactionHash: any; }) => ({
+        id: s.id,
+        amount: s.amount,
+        apy: s.apy,
+        startTime: s.startTime.toISOString(),
+        duration: s.duration,
+        endTime: s.endTime.toISOString(),
+        status: s.status,
+        accruedRewards: s.accruedRewards,
+        transactionHash: s.transactionHash,
+      })),
+    });
+  } catch (err) {
+    console.error("[API] Stakes list error", err);
+    return NextResponse.json(
+      { success: false, error: "internal" },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * POST /api/stake
  * Initiate staking of ECO tokens
- * 
+ *
  * Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.7, 8.9, 8.10
  */
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Lock, TrendingUp, AlertCircle, Check } from "lucide-react";
 import { ProductShell } from "@/components/layout/product-shell";
+import { useWallet } from "@/contexts/wallet-context";
 
 const TIERS = [
   { days: 30, apy: 5, label: "30 Days" },
@@ -14,24 +15,56 @@ const TIERS = [
 const MINIMUM_STAKE = 100;
 
 export default function StakePage() {
+  const { isConnected, address } = useWallet();
   const [selectedTier, setSelectedTier] = useState(TIERS[0]);
   const [amount, setAmount] = useState("");
   const [isStaking, setIsStaking] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const amountNum = parseFloat(amount) || 0;
   const isValidAmount = amountNum >= MINIMUM_STAKE;
   const estimatedReward = (amountNum * selectedTier.apy * selectedTier.days) / (365 * 100);
 
   const handleStake = async () => {
-    if (!isValidAmount) return;
+    if (!isValidAmount || !isConnected) return;
     setIsStaking(true);
-    // Simulate staking transaction
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsStaking(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    setError(null);
+    try {
+      const res = await fetch('/api/stake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: (amountNum * 1e18).toString(),
+          durationDays: selectedTier.days.toString(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+        setAmount("");
+      } else {
+        setError(data.error?.message || 'Staking failed');
+      }
+    } catch (err) {
+      setError('Failed to stake tokens');
+    } finally {
+      setIsStaking(false);
+    }
   };
+
+  if (!isConnected) {
+    return (
+      <ProductShell>
+        <div className="mx-auto max-w-2xl px-6 py-8">
+          <div className="text-center py-12">
+            <p className="text-[var(--color-text-muted)]">Connect your wallet to stake tokens.</p>
+          </div>
+        </div>
+      </ProductShell>
+    );
+  }
 
   return (
     <ProductShell>
@@ -156,6 +189,12 @@ export default function StakePage() {
             `Stake ${amountNum > 0 ? amountNum : ""} ECO`
           )}
         </button>
+
+        {error && (
+          <div className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">
+            {error}
+          </div>
+        )}
 
         {/* Info */}
         <p className="mt-4 text-center text-xs text-[var(--color-text-muted)]">

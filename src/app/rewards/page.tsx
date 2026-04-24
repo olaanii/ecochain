@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 import { ProductShell } from "@/components/layout/product-shell";
 
@@ -14,33 +16,46 @@ const imgNavHistory = "";
 const imgNavImpact = "";
 const imgNotificationIcon = "";
 
+interface Transaction {
+  id: string;
+  amount: number;
+  type: string;
+  source: string;
+  transactionHash: string | null;
+  metadata: unknown;
+  createdAt: string;
+}
+
 export default function RewardsPage() {
-  const transactions = [
-    {
-      date: "OCT 24, 2023",
-      title: "Community Tree Planting",
-      points: "+500",
-      type: "earned"
-    },
-    {
-      date: "OCT 18, 2023",
-      title: "Redeemed: Organic Cotton Tote",
-      points: "-1,200",
-      type: "redeemed"
-    },
-    {
-      date: "OCT 12, 2023",
-      title: "Weekly Commute (Bike)",
-      points: "+150",
-      type: "earned"
-    },
-    {
-      date: "SEP 30, 2023",
-      title: "Zero-Waste Groceries Bonus",
-      points: "+300",
-      type: "earned"
-    }
-  ];
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const res = await fetch('/api/transactions?limit=20');
+        const data = await res.json();
+        if (data.success) {
+          setTransactions(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch transactions:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTransactions();
+  }, []);
+
+  if (loading) {
+    return (
+      <ProductShell>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+        </div>
+      </ProductShell>
+    );
+  }
 
   return (
     <ProductShell>
@@ -117,47 +132,58 @@ export default function RewardsPage() {
             Recent Activity
           </h2>
           
-          <div className="flex flex-col gap-12">
-            {transactions.map((transaction, index) => (
-              <div key={index} className="flex items-start justify-between">
-                <div className="flex flex-col gap-1">
-                  <p
-                    className="text-[#adb3b4]"
-                    style={{
-                      fontFamily: "var(--font-body)",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      letterSpacing: "0.36px",
-                      textTransform: "uppercase"
-                    }}
-                  >
-                    {transaction.date}
-                  </p>
-                  <p
-                    className="text-[#2d3435]"
-                    style={{
-                      fontFamily: "var(--font-body)",
-                      fontSize: "16px",
-                      fontWeight: "500",
-                      lineHeight: "24px"
-                    }}
-                  >
-                    {transaction.title}
-                  </p>
-                </div>
-                <p
-                  className={transaction.type === "earned" ? "text-[#3b6934]" : "text-[#5a6061]"}
-                  style={{
-                    fontFamily: "var(--font-body)",
-                    fontSize: "18px",
-                    fontWeight: "500",
-                    lineHeight: "28px"
-                  }}
-                >
-                  {transaction.points}
-                </p>
+          <div className="flex flex-col gap-4">
+            {transactions.length === 0 ? (
+              <div className="py-12 text-center text-[#5a6061]">
+                No transactions yet.
               </div>
-            ))}
+            ) : (
+              transactions.map((tx) => {
+                const amount = Number(tx.amount) / 1e18;
+                const isPositive = amount >= 0;
+                return (
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between py-4 border-b border-[#e0e0e0] last:border-0"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <p
+                        className="text-[#2d3435]"
+                        style={{
+                          fontFamily: "var(--font-body)",
+                          fontSize: "16px",
+                          fontWeight: "500",
+                          lineHeight: "24px"
+                        }}
+                      >
+                        {tx.source || tx.type}
+                      </p>
+                      <p
+                        className="text-[#5a6061]"
+                        style={{
+                          fontFamily: "var(--font-body)",
+                          fontSize: "14px",
+                          lineHeight: "20px"
+                        }}
+                      >
+                        {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+                      </p>
+                    </div>
+                    <p
+                      className={`text-[${isPositive ? '#3b6934' : '#d63031'}]`}
+                      style={{
+                        fontFamily: "var(--font-body)",
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        lineHeight: "24px"
+                      }}
+                    >
+                      {isPositive ? '+' : ''}{amount.toFixed(2)}
+                    </p>
+                  </div>
+                );
+              })
+            )}
           </div>
           
           <div className="pt-4">

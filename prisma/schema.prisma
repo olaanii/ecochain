@@ -10,6 +10,7 @@ datasource db {
 model User {
   id              String          @id @default(cuid())
   clerkId         String          @unique
+  email           String?         @unique
   initiaAddress   String          @unique
   initiaUsername  String?
   username        String?         @unique
@@ -22,6 +23,7 @@ model User {
   lastTaskAt      DateTime?       // For streak tracking
   preferences     Json?           // Notification preferences, language, etc.
   role            String          @default("user") // user, sponsor, admin, owner
+  deletedAt       DateTime?       // Soft delete for Clerk webhook
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   verifications   Verification[]
@@ -31,12 +33,14 @@ model User {
   redemptions     Redemption[]
   votes           Vote[]
   notifications   Notification[]
+  sponsorRequests SponsorRequest[]
 
   @@index([initiaAddress])
   @@index([totalRewards])
   @@index([level])
   @@index([region])
   @@index([role])
+  @@index([deletedAt])
 }
 
 model Notification {
@@ -296,6 +300,26 @@ model AuditLog {
   @@index([actorId])
   @@index([action])
   @@index([resource, resourceId])
+  @@index([createdAt])
+}
+
+model SponsorRequest {
+  id           String   @id @default(cuid())
+  userId       String
+  clerkId      String
+  businessName String
+  contactInfo  String
+  reason       String
+  status       String   @default("pending") // pending, approved, rejected
+  reviewedBy   String?  // admin user id
+  reviewedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
   @@index([createdAt])
 }
 

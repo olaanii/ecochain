@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 import { ProductShell } from "@/components/layout/product-shell";
 
@@ -21,31 +23,57 @@ const imgNavOffers = "";
 const imgNavHistory = "";
 const imgNavImpact = "";
 
+interface Verification {
+  id: string;
+  taskId: string;
+  userId: string;
+  status: string;
+  fraudScore: number;
+  evidence: unknown;
+  metadata: unknown;
+  createdAt: string;
+  updatedAt: string;
+  task?: {
+    name: string;
+    description: string;
+    category: string;
+  };
+  user?: {
+    displayName: string;
+    initiaUsername: string;
+  };
+}
+
 export default function VerificationPage() {
-  const submissions = [
-    {
-      id: "#QE-8492",
-      title: "Urban Reforestation Initiative",
-      time: "2 HOURS AGO",
-      description: "User uploaded documentation confirming the planting of 50 native saplings in an urban public park. GPS coordinates and photo evidence provided.",
-      impact: "50 Trees Planted",
-      location: "East District Park",
-      confidence: "92%",
-      image: imgPlantedTrees,
-      userImage: imgUserPortrait
-    },
-    {
-      id: "#QE-8491",
-      title: "Residential Solar Installation",
-      time: "5 HOURS AGO",
-      description: "Homeowner completed installation of 6kW solar panel system with grid integration. Permit documentation and completion certificate verified.",
-      impact: "6 kW Solar",
-      location: "West Residential Zone",
-      confidence: "88%",
-      image: imgSolarPanelInstallation,
-      userImage: imgUserPortrait
-    }
-  ];
+  const [submissions, setSubmissions] = useState<Verification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchVerifications = async () => {
+      try {
+        const res = await fetch('/api/verify/history?limit=20');
+        const data = await res.json();
+        if (data.success) {
+          setSubmissions(data.verifications || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch verifications:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchVerifications();
+  }, []);
+
+  if (loading) {
+    return (
+      <ProductShell>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+        </div>
+      </ProductShell>
+    );
+  }
 
   return (
     <ProductShell>
@@ -103,287 +131,123 @@ export default function VerificationPage() {
         </div>
 
         {/* Submissions */}
-        <div className="flex flex-col gap-12">
-          {submissions.map((submission, index) => (
-            <div key={submission.id} className="surface-card p-8 shadow-lg">
-              <div className="flex gap-8">
-                {/* Image */}
-                <div className="aspect-[4/3] surface-muted overflow-hidden rounded-sm relative flex-shrink-0">
-                  <div className="h-[220px] w-full">
-                    <Image
-                      src={submission.image}
-                      alt={submission.title}
-                      fill
-                      className="object-cover"
-                      style={{ objectPosition: "center top" }}
-                    />
-                  </div>
-                  <div className="absolute left-4 top-4 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-sm">
-                    <p
-                      className="text-[#2d3435]"
-                      style={{
-                        fontFamily: "var(--font-body)",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        letterSpacing: "0.36px",
-                        textTransform: "uppercase"
-                      }}
-                    >
-                      ID: {submission.id}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex flex-col justify-between min-h-[200px] flex-1">
-                  <div className="flex flex-col gap-2 pb-8">
-                    <div className="flex items-start justify-between">
-                      <h2
+        <div className="flex flex-col gap-6">
+          {submissions.length === 0 ? (
+            <div className="py-12 text-center text-[#5a6061]">
+              No pending verifications.
+            </div>
+          ) : (
+            submissions.map((submission) => (
+              <div
+                key={submission.id}
+                className="flex flex-col gap-6 p-8 border border-[#e0e0e0] rounded-2xl"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="relative h-16 w-16 rounded-full overflow-hidden bg-[#e0e0e0]">
+                      <span className="flex items-center justify-center h-full text-[#5a6061] text-lg font-medium">
+                        {(submission.user?.displayName || submission.user?.initiaUsername || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <p
                         className="text-[#2d3435]"
                         style={{
-                          fontFamily: "var(--font-heading)",
-                          fontSize: "22px",
-                          fontWeight: "500",
-                          lineHeight: "30.8px"
+                          fontFamily: "var(--font-body)",
+                          fontSize: "18px",
+                          fontWeight: "600",
+                          lineHeight: "28px"
                         }}
                       >
-                        {submission.title}
-                      </h2>
+                        {submission.task?.name || 'Unknown Task'}
+                      </p>
                       <p
                         className="text-[#5a6061]"
                         style={{
                           fontFamily: "var(--font-body)",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          letterSpacing: "0.36px",
-                          textTransform: "uppercase"
+                          fontSize: "14px",
+                          lineHeight: "20px"
                         }}
                       >
-                        {submission.time}
+                        {new Date(submission.createdAt).toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).toUpperCase()}
                       </p>
                     </div>
-                    
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        submission.status === 'verified'
+                          ? 'bg-[rgba(59,105,52,0.1)] text-[#3b6934]'
+                          : submission.status === 'rejected'
+                          ? 'bg-[rgba(214,48,49,0.1)] text-[#d63031]'
+                          : 'bg-[rgba(45,52,54,0.1)] text-[#2d3435]'
+                      }`}
+                    >
+                      {submission.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                <p
+                  className="text-[#5a6061]"
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "16px",
+                    lineHeight: "24px"
+                  }}
+                >
+                  {submission.task?.description || 'No description available.'}
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
                     <p
-                      className="text-[#5a6061] max-w-[672px]"
+                      className="text-[#5a6061]"
+                      style={{
+                        fontFamily: "var(--font-body)",
+                        fontSize: "14px",
+                        lineHeight: "20px"
+                      }}
+                    >
+                      Category:
+                    </p>
+                    <p
+                      className="text-[#2d3435]"
                       style={{
                         fontFamily: "var(--font-body)",
                         fontSize: "16px",
-                        lineHeight: "24px",
-                        letterSpacing: "0.16px"
+                        fontWeight: "500",
+                        lineHeight: "24px"
                       }}
                     >
-                      {submission.description}
+                      {submission.task?.category || 'Unknown'}
                     </p>
-
-                    {/* Metrics Grid */}
-                    <div className="grid grid-cols-4 gap-6 pt-4">
-                      <div className="flex flex-col gap-1">
-                        <p
-                          className="text-[#5a6061]"
-                          style={{
-                            fontFamily: "var(--font-body)",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                            letterSpacing: "0.36px",
-                            textTransform: "uppercase"
-                          }}
-                        >
-                          IMPACT
-                        </p>
-                        <p
-                          className="text-[#3b6934]"
-                          style={{
-                            fontFamily: "var(--font-body)",
-                            fontSize: "16px",
-                            fontWeight: "500",
-                            letterSpacing: "0.16px"
-                          }}
-                        >
-                          {submission.impact}
-                        </p>
-                      </div>
-                      
-                      <div className="flex flex-col gap-1">
-                        <p
-                          className="text-[#5a6061]"
-                          style={{
-                            fontFamily: "var(--font-body)",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                            letterSpacing: "0.36px",
-                            textTransform: "uppercase"
-                          }}
-                        >
-                          LOCATION
-                        </p>
-                        <p
-                          className="text-[#2d3435]"
-                          style={{
-                            fontFamily: "var(--font-body)",
-                            fontSize: "16px",
-                            fontWeight: "400",
-                            letterSpacing: "0.16px"
-                          }}
-                        >
-                          {submission.location}
-                        </p>
-                      </div>
-                      
-                      <div className="flex flex-col gap-1">
-                        <p
-                          className="text-[#5a6061]"
-                          style={{
-                            fontFamily: "var(--font-body)",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                            letterSpacing: "0.36px",
-                            textTransform: "uppercase"
-                          }}
-                        >
-                          SUBMITTED BY
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <div className="relative h-6 w-6">
-                            <Image
-                              src={submission.userImage}
-                              alt="User"
-                              fill
-                              className="object-cover rounded-full"
-                            />
-                          </div>
-                          <p
-                            className="text-[#2d3435]"
-                            style={{
-                              fontFamily: "var(--font-body)",
-                              fontSize: "16px",
-                              fontWeight: "400",
-                              letterSpacing: "0.16px"
-                            }}
-                          >
-                            Alex Chen
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col gap-1">
-                        <p
-                          className="text-[#5a6061]"
-                          style={{
-                            fontFamily: "var(--font-body)",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                            letterSpacing: "0.36px",
-                            textTransform: "uppercase"
-                          }}
-                        >
-                          CONFIDENCE<br />SCORE
-                        </p>
-                        <p
-                          className="text-[#2d3435]"
-                          style={{
-                            fontFamily: "var(--font-body)",
-                            fontSize: "16px",
-                            fontWeight: "400",
-                            letterSpacing: "0.16px"
-                          }}
-                        >
-                          {submission.confidence}
-                        </p>
-                      </div>
-                    </div>
                   </div>
-
-                  {/* Actions */}
-                  <div className="border-t border-[#e4e9ea] flex items-center gap-6 pt-6">
-                    <button className="btn-primary flex items-center gap-2 px-6 py-3 rounded-sm">
-                      <div className="relative h-2.5 w-3.5">
-                        <Image
-                          src={imgApproveIcon}
-                          alt="Approve"
-                          fill
-                          className="object-contain"
-                        />
-                      </div>
-                      <span
-                        className="text-[#e6ffdb]"
-                        style={{
-                          fontFamily: "var(--font-body)",
-                          fontSize: "16px",
-                          fontWeight: "500",
-                          letterSpacing: "0.16px"
-                        }}
-                      >
-                        Approve
-                      </span>
-                    </button>
-                    
-                    <button className="flex items-center gap-2 px-6 py-3 rounded-sm border border-[#e4e9ea] bg-white">
-                      <div className="relative h-3 w-3">
-                        <Image
-                          src={imgRejectIcon}
-                          alt="Reject"
-                          fill
-                          className="object-contain"
-                        />
-                      </div>
-                      <span
-                        className="text-[#2d3435]"
-                        style={{
-                          fontFamily: "var(--font-body)",
-                          fontSize: "16px",
-                          fontWeight: "500",
-                          letterSpacing: "0.16px"
-                        }}
-                      >
-                        Reject
-                      </span>
-                    </button>
-                    
-                    <div className="flex-1 flex justify-end">
-                      <button className="px-4 py-2">
-                        <span
-                          className="text-[#5a6061]"
-                          style={{
-                            fontFamily: "var(--font-body)",
-                            fontSize: "16px",
-                            fontWeight: "400",
-                            letterSpacing: "0.16px"
-                          }}
-                        >
-                          Request Details
-                        </span>
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <p
+                      className="text-[#5a6061]"
+                      style={{
+                        fontFamily: "var(--font-body)",
+                        fontSize: "14px",
+                        lineHeight: "20px"
+                      }}
+                    >
+                      Fraud Score:
+                    </p>
+                    <p
+                      className="text-[#2d3435]"
+                      style={{
+                        fontFamily: "var(--font-body)",
+                        fontSize: "16px",
+                        fontWeight: "500",
+                        lineHeight: "24px"
+                      }}
+                    >
+                      {(submission.fraudScore * 100).toFixed(0)}%
+                    </p>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Load More */}
-        <div className="flex justify-center pt-4">
-          <button className="surface-muted flex items-center gap-3 px-8 py-4 rounded-sm border border-[rgba(173,179,180,0.1)] shadow-sm">
-            <span
-              className="text-[#2d3435]"
-              style={{
-                fontFamily: "var(--font-body)",
-                fontSize: "16px",
-                fontWeight: "500",
-                letterSpacing: "0.16px"
-              }}
-            >
-              Load Older Submissions
-            </span>
-            <div className="relative h-3.5 w-3.5">
-              <Image
-                src={imgLoadMoreIcon}
-                alt="Load more"
-                fill
-                className="object-contain"
-              />
-            </div>
-          </button>
+            ))
+          )}
         </div>
       </div>
     </ProductShell>

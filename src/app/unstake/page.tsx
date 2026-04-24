@@ -1,55 +1,103 @@
 "use client";
 
-import { useState } from "react";
-import { Unlock, AlertTriangle, Check, Clock, Coins } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Unlock, AlertTriangle, Check, Clock, Coins, Loader2 } from "lucide-react";
 import { ProductShell } from "@/components/layout/product-shell";
+import { useWallet } from "@/contexts/wallet-context";
 
-const MOCK_STAKES = [
-  {
-    id: "1",
-    amount: 500,
-    apy: 8,
-    days: 90,
-    startDate: "2026-01-15",
-    endDate: "2026-04-15",
-    status: "matured",
-    earned: 12.3,
-  },
-  {
-    id: "2",
-    amount: 1000,
-    apy: 12,
-    days: 180,
-    startDate: "2026-02-01",
-    endDate: "2026-07-31",
-    status: "locked",
-    earned: 45.2,
-  },
-];
+interface Stake {
+  id: string;
+  amount: string;
+  apy: string;
+  startTime: string;
+  duration: number;
+  endTime: string;
+  status: string;
+  accruedRewards: string;
+}
 
 export default function UnstakePage() {
+  const { isConnected } = useWallet();
+  const [stakes, setStakes] = useState<Stake[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedStake, setSelectedStake] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isUnstaking, setIsUnstaking] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const stake = MOCK_STAKES.find((s) => s.id === selectedStake);
-  const isMatured = stake?.status === "matured";
-  const penalty = !isMatured && stake ? stake.amount * 0.1 : 0;
-  const receiveAmount = stake ? stake.amount - penalty : 0;
+  useEffect(() => {
+    if (!isConnected) {
+      setLoading(false);
+      return;
+    }
+    const fetchStakes = async () => {
+      try {
+        const res = await fetch('/api/stake');
+        const data = await res.json();
+        if (data.success) {
+          setStakes(data.stakes);
+        }
+      } catch (err) {
+        console.error('Failed to fetch stakes:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStakes();
+  }, [isConnected]);
+
+  const stake = stakes.find((s) => s.id === selectedStake);
+  const amount = stake ? Number(stake.amount) / 1e18 : 0;
+  const earned = stake ? Number(stake.accruedRewards) / 1e18 : 0;
+  const isMatured = stake?.status === "matured" || new Date(stake?.endTime || 0) < new Date();
+  const penalty = !isMatured && stake ? amount * 0.1 : 0;
+  const receiveAmount = stake ? amount - penalty : 0;
 
   const handleUnstake = async () => {
     if (!stake) return;
     setIsUnstaking(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsUnstaking(false);
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      setShowConfirm(false);
-      setSelectedStake(null);
-    }, 3000);
+    setError(null);
+    try {
+      // TODO: Call unstake API when implemented
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setShowConfirm(false);
+        setSelectedStake(null);
+        setStakes(stakes.filter((s) => s.id !== stake.id));
+      }, 3000);
+    } catch (err) {
+      setError('Failed to unstake');
+    } finally {
+      setIsUnstaking(false);
+    }
   };
+
+  if (!isConnected) {
+    return (
+      <ProductShell>
+        <div className="mx-auto max-w-2xl px-6 py-8">
+          <div className="text-center py-12">
+            <p className="text-[var(--color-text-muted)]">Connect your wallet to unstake tokens.</p>
+          </div>
+        </div>
+      </ProductShell>
+    );
+  }
+
+  if (loading) {
+    return (
+      <ProductShell>
+        <div className="mx-auto max-w-2xl px-6 py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+          </div>
+        </div>
+      </ProductShell>
+    );
+  }
 
   return (
     <ProductShell>
@@ -68,62 +116,68 @@ export default function UnstakePage() {
 
         {/* Stakes List */}
         <div className="mb-6 space-y-4">
-          {MOCK_STAKES.map((s) => (
-            <div
-              key={s.id}
-              onClick={() => {
-                setSelectedStake(s.id);
-                setShowConfirm(true);
-              }}
-              className={`cursor-pointer rounded-2xl border-2 p-5 transition-all hover:shadow-md ${
-                selectedStake === s.id
-                  ? "border-[var(--color-brand-secondary)] bg-[var(--color-brand-secondary)]/5"
-                  : "border-[var(--color-surface-muted)] bg-[var(--color-surface-elevated)]"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`rounded-xl p-2 ${
-                      s.status === "matured"
-                        ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
-                        : "bg-[var(--color-brand-accent)]/10 text-[var(--color-brand-accent)]"
-                    }`}
-                  >
-                    {s.status === "matured" ? <Unlock size={20} /> : <Clock size={20} />}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-[var(--color-text-dark)]">
-                      {s.amount.toLocaleString()} ECO
-                    </p>
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      {s.apy}% APY · {s.days} days
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                      s.status === "matured"
-                        ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
-                        : "bg-[var(--color-brand-accent)]/10 text-[var(--color-brand-accent)]"
-                    }`}
-                  >
-                    {s.status === "matured" ? "Ready" : "Locked"}
-                  </span>
-                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                    Ends {s.endDate}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-4 border-t border-[var(--color-surface-muted)] pt-3">
-                <div className="flex items-center gap-2 text-sm text-[var(--color-success)]">
-                  <Coins size={14} />
-                  <span>+{s.earned} ECO earned</span>
-                </div>
-              </div>
+          {stakes.length === 0 ? (
+            <div className="text-center py-12 text-[var(--color-text-muted)]">
+              No active stakes to unstake.
             </div>
-          ))}
+          ) : (
+            stakes.map((s) => (
+              <div
+                key={s.id}
+                onClick={() => {
+                  setSelectedStake(s.id);
+                  setShowConfirm(true);
+                }}
+                className={`cursor-pointer rounded-2xl border-2 p-5 transition-all hover:shadow-md ${
+                  selectedStake === s.id
+                    ? "border-[var(--color-brand-secondary)] bg-[var(--color-brand-secondary)]/5"
+                    : "border-[var(--color-surface-muted)] bg-[var(--color-surface-elevated)]"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`rounded-xl p-2 ${
+                        s.status === "matured"
+                          ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
+                          : "bg-[var(--color-brand-accent)]/10 text-[var(--color-brand-accent)]"
+                      }`}
+                    >
+                      {s.status === "matured" ? <Unlock size={20} /> : <Clock size={20} />}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[var(--color-text-dark)]">
+                        {(Number(s.amount) / 1e18).toLocaleString()} ECO
+                      </p>
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        {(Number(s.apy) / 100).toFixed(0)}% APY · {s.duration} days
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        s.status === "matured"
+                          ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
+                          : "bg-[var(--color-brand-accent)]/10 text-[var(--color-brand-accent)]"
+                      }`}
+                    >
+                      {s.status === "matured" ? "Ready" : "Locked"}
+                    </span>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                      Ends {new Date(s.endTime).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-4 border-t border-[var(--color-surface-muted)] pt-3">
+                  <div className="flex items-center gap-2 text-sm text-[var(--color-success)]">
+                    <Coins size={14} />
+                    <span>+{(Number(s.accruedRewards) / 1e18).toFixed(2)} ECO earned</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Confirmation Modal */}
@@ -151,7 +205,7 @@ export default function UnstakePage() {
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--color-text-muted)]">Staked Amount</span>
                 <span className="font-medium text-[var(--color-text-dark)]">
-                  {stake.amount.toLocaleString()} ECO
+                  {amount.toLocaleString()} ECO
                 </span>
               </div>
               <div className="flex justify-between text-sm">
@@ -169,6 +223,12 @@ export default function UnstakePage() {
                 </span>
               </div>
             </div>
+
+            {error && (
+              <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">
+                {error}
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button

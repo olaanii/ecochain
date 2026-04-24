@@ -1,69 +1,77 @@
 "use client";
 
-import { useState } from "react";
-import { ThumbsUp, ThumbsDown, Minus, Clock, Users, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ThumbsUp, ThumbsDown, Minus, Clock, Users, CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react";
 import { ProductShell } from "@/components/layout/product-shell";
 
-const PROPOSALS = [
-  {
-    id: "1",
-    title: "Increase Staking Rewards by 2%",
-    description: "Proposal to increase APY rates across all duration tiers by 2% to incentivize long-term staking.",
-    status: "active",
-    votesFor: 1250,
-    votesAgainst: 320,
-    votesAbstain: 150,
-    totalVotingPower: 1720,
-    endDate: "May 5, 2026",
-    timeRemaining: "12 days",
-    author: "0x7a3f...9e2d",
-    category: "Treasury",
-    userVoted: null as "for" | "against" | "abstain" | null,
-  },
-  {
-    id: "2",
-    title: "Add New 730-Day Staking Tier",
-    description: "Introduce a new 2-year staking option with 25% APY for maximum commitment.",
-    status: "active",
-    votesFor: 890,
-    votesAgainst: 210,
-    votesAbstain: 45,
-    totalVotingPower: 1145,
-    endDate: "May 8, 2026",
-    timeRemaining: "15 days",
-    author: "0x4b8c...2a5f",
-    category: "Protocol",
-    userVoted: "for",
-  },
-  {
-    id: "3",
-    title: "Reduce Early Withdrawal Penalty to 5%",
-    description: "Lower the early unstaking penalty from 10% to 5% to improve user experience.",
-    status: "passed",
-    votesFor: 1500,
-    votesAgainst: 200,
-    votesAbstain: 80,
-    totalVotingPower: 1780,
-    endDate: "Apr 10, 2026",
-    timeRemaining: "Ended",
-    author: "0x9d2e...7c4b",
-    category: "Protocol",
-    userVoted: null,
-  },
-];
+interface Proposal {
+  id: string;
+  title: string;
+  description: string;
+  proposer: string;
+  status: string;
+  votesFor: number;
+  votesAgainst: number;
+  votesAbstain: number;
+  quorum: number;
+  startTime: string;
+  endTime: string;
+  executionTime: string | null;
+  createdAt: string;
+  totalVotes: number;
+  quorumPct: number;
+  approvePct: number;
+  rejectPct: number;
+  endsInMs: number;
+  isOpen: boolean;
+}
 
 export default function ProposalsPage() {
   const [filter, setFilter] = useState<"all" | "active" | "passed" | "rejected">("all");
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredProposals = PROPOSALS.filter((p) => {
+  useEffect(() => {
+    const fetchProposals = async () => {
+      try {
+        const res = await fetch('/api/governance/proposals');
+        const data = await res.json();
+        if (data.success) {
+          setProposals(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch proposals:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProposals();
+  }, []);
+
+  const filteredProposals = proposals.filter((p) => {
     if (filter === "all") return true;
-    return p.status === filter;
+    if (filter === "active") return p.isOpen;
+    if (filter === "passed") return p.status === "passed" || p.status === "executed";
+    if (filter === "rejected") return p.status === "failed" || p.status === "rejected";
+    return true;
   });
 
   const calculatePercentage = (votes: number, total: number) => {
     if (total === 0) return 0;
     return Math.round((votes / total) * 100);
   };
+
+  if (loading) {
+    return (
+      <ProductShell>
+        <div className="mx-auto max-w-3xl px-6 py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+          </div>
+        </div>
+      </ProductShell>
+    );
+  }
 
   return (
     <ProductShell>
@@ -99,124 +107,95 @@ export default function ProposalsPage() {
 
         {/* Proposals List */}
         <div className="space-y-4">
-          {filteredProposals.map((proposal) => (
-            <div
-              key={proposal.id}
-              className="rounded-2xl border border-[var(--color-surface-muted)] bg-[var(--color-surface-elevated)] p-5"
-            >
-              {/* Header */}
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        proposal.status === "active"
-                          ? "bg-[var(--color-brand-accent)]/10 text-[var(--color-brand-accent)]"
-                          : proposal.status === "passed"
-                          ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
-                          : "bg-red-50 text-red-600"
-                      }`}
-                    >
-                      {proposal.status === "active" ? (
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} /> Active
+          {filteredProposals.length === 0 ? (
+            <div className="text-center py-12 text-[var(--color-text-muted)]">
+              No proposals found.
+            </div>
+          ) : (
+            filteredProposals.map((proposal) => {
+              const StatusIcon =
+                proposal.status === "passed" || proposal.status === "executed" ? CheckCircle : proposal.status === "failed" || proposal.status === "rejected" ? XCircle : Clock;
+              const statusColor =
+                proposal.status === "passed" || proposal.status === "executed"
+                  ? "text-[var(--color-success)] bg-[var(--color-success)]/10"
+                  : proposal.status === "failed" || proposal.status === "rejected"
+                    ? "text-red-600 bg-red-50"
+                    : "text-[var(--color-brand-accent)] bg-[var(--color-brand-accent)]/10";
+              const timeRemaining = proposal.endsInMs > 0 ? `${Math.floor(proposal.endsInMs / (1000 * 60 * 60 * 24))} days` : "Ended";
+              const isEnded = !proposal.isOpen;
+
+              return (
+                <div
+                  key={proposal.id}
+                  className="rounded-2xl border border-[var(--color-surface-muted)] bg-[var(--color-surface-elevated)] p-5"
+                >
+                  {/* Header */}
+                  <div className="mb-4 flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor}`}
+                        >
+                          <StatusIcon size={12} />
+                          <span className="capitalize">{proposal.status}</span>
                         </span>
-                      ) : proposal.status === "passed" ? (
-                        <span className="flex items-center gap-1">
-                          <CheckCircle size={12} /> Passed
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1">
-                          <XCircle size={12} /> Rejected
-                        </span>
-                      )}
+                        <span className="text-xs text-[var(--color-text-muted)]">{new Date(proposal.endTime).toLocaleDateString()}</span>
+                      </div>
+                      <h3 className="mt-2 text-base font-semibold text-[var(--color-text-dark)]">
+                        {proposal.title}
+                      </h3>
+                      <p className="mt-1 text-sm text-[var(--color-text-muted)] line-clamp-2">
+                        {proposal.description}
+                      </p>
+                    </div>
+                    <div className="ml-4 text-right">
+                      <p className="text-xs text-[var(--color-text-muted)]">by {proposal.proposer.slice(0, 8)}...</p>
+                    </div>
+                  </div>
+
+                  {/* Voting Progress */}
+                  <div className="mb-4 space-y-2">
+                    <div className="flex h-2 overflow-hidden rounded-full">
+                      <div
+                        className="bg-[var(--color-success)]"
+                        style={{ width: `${proposal.approvePct}%` }}
+                      />
+                      <div
+                        className="bg-red-400"
+                        style={{ width: `${proposal.rejectPct}%` }}
+                      />
+                      <div
+                        className="bg-[var(--color-text-muted)]"
+                        style={{ width: `${100 - proposal.approvePct - proposal.rejectPct}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
+                      <span className="text-[var(--color-success)]">
+                        For: {proposal.approvePct}%
+                      </span>
+                      <span className="text-red-500">
+                        Against: {proposal.rejectPct}%
+                      </span>
+                      <span>
+                        Quorum: {proposal.quorumPct}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Voting Info */}
+                  <div className="mb-4 flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
+                    <span className="flex items-center gap-1">
+                      <Users size={14} />
+                      {proposal.totalVotes.toLocaleString()} votes
                     </span>
-                    <span className="rounded-full bg-[var(--color-surface-muted)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text-muted)]">
-                      {proposal.category}
+                    <span className="flex items-center gap-1">
+                      <Clock size={14} />
+                      {timeRemaining}
                     </span>
                   </div>
-                  <h3 className="mt-2 font-semibold text-[var(--color-text-dark)]">
-                    {proposal.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                    {proposal.description}
-                  </p>
                 </div>
-              </div>
-
-              {/* Voting Progress */}
-              <div className="mb-4 space-y-2">
-                <div className="flex h-2 overflow-hidden rounded-full">
-                  <div
-                    className="bg-[var(--color-success)]"
-                    style={{ width: `${calculatePercentage(proposal.votesFor, proposal.totalVotingPower)}%` }}
-                  />
-                  <div
-                    className="bg-red-400"
-                    style={{ width: `${calculatePercentage(proposal.votesAgainst, proposal.totalVotingPower)}%` }}
-                  />
-                  <div
-                    className="bg-[var(--color-text-muted)]"
-                    style={{ width: `${calculatePercentage(proposal.votesAbstain, proposal.totalVotingPower)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                  <span className="text-[var(--color-success)]">
-                    For: {calculatePercentage(proposal.votesFor, proposal.totalVotingPower)}%
-                  </span>
-                  <span className="text-red-500">
-                    Against: {calculatePercentage(proposal.votesAgainst, proposal.totalVotingPower)}%
-                  </span>
-                  <span>
-                    Abstain: {calculatePercentage(proposal.votesAbstain, proposal.totalVotingPower)}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Voting Info */}
-              <div className="mb-4 flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
-                <span className="flex items-center gap-1">
-                  <Users size={14} />
-                  {proposal.totalVotingPower.toLocaleString()} votes
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock size={14} />
-                  {proposal.timeRemaining}
-                </span>
-              </div>
-
-              {/* Vote Buttons */}
-              {proposal.status === "active" && !proposal.userVoted && (
-                <div className="flex gap-2">
-                  <button className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--color-success)]/10 py-2.5 text-sm font-semibold text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/20">
-                    <ThumbsUp size={16} />
-                    Vote For
-                  </button>
-                  <button className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-50 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100">
-                    <ThumbsDown size={16} />
-                    Vote Against
-                  </button>
-                  <button className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--color-surface-muted)] py-2.5 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)]/80">
-                    <Minus size={16} />
-                    Abstain
-                  </button>
-                </div>
-              )}
-
-              {proposal.userVoted && (
-                <div className="flex items-center gap-2 rounded-xl bg-[var(--color-success)]/10 py-2.5 text-center text-sm font-medium text-[var(--color-success)]">
-                  <CheckCircle size={16} />
-                  You voted: {proposal.userVoted}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {filteredProposals.length === 0 && (
-            <div className="py-12 text-center">
-              <AlertCircle className="mx-auto mb-2 text-[var(--color-text-muted)]" size={32} />
-              <p className="text-[var(--color-text-muted)]">No proposals found.</p>
-            </div>
+              );
+            })
           )}
         </div>
       </div>

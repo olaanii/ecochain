@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { SponsorShell } from "@/components/layout/sponsor-shell";
 import {
   ListTodo,
@@ -8,24 +9,57 @@ import {
   TrendingUp,
   Plus,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
-const stats = [
-  { label: "Active Tasks", value: "12", delta: "+2 this week", icon: ListTodo, color: "text-[#3b6934]" },
-  { label: "Users Engaged", value: "1,284", delta: "+87 this month", icon: Users, color: "text-[#2d6fa6]" },
-  { label: "Rewards Distributed", value: "48,300 ECO", delta: "+5,200 this week", icon: Coins, color: "text-[#7a3b9c]" },
-  { label: "Completion Rate", value: "74%", delta: "+3% vs last month", icon: TrendingUp, color: "text-[#a05c1a]" },
-];
-
-const recentActivity = [
-  { id: "1", type: "Task Completed", desc: "Tree Planting Drive — 23 completions today", time: "2 min ago" },
-  { id: "2", type: "Campaign Launched", desc: "Urban Cycling Challenge went live", time: "1 hr ago" },
-  { id: "3", type: "Reward Paid", desc: "1,200 ECO distributed to 12 users", time: "3 hr ago" },
-  { id: "4", type: "Task Approved", desc: "Beach Cleanup Task passed review", time: "Yesterday" },
-];
+interface AnalyticsData {
+  totals: {
+    activeTasks: number;
+    totalUsers: number;
+    activeUsers30d: number;
+    verificationsThisMonth: number;
+    treasuryBalance: number;
+  };
+  updatedAt: string;
+}
 
 export default function SponsorDashboard() {
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const res = await fetch('/api/analytics/metrics');
+        const data = await res.json();
+        setAnalytics(data);
+      } catch (err) {
+        console.error('Failed to fetch analytics:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, []);
+
+  const stats = analytics ? [
+    { label: "Active Tasks", value: analytics.totals.activeTasks.toString(), delta: "Live", icon: ListTodo, color: "text-[#3b6934]" },
+    { label: "Users Engaged", value: analytics.totals.activeUsers30d.toLocaleString(), delta: "Last 30 days", icon: Users, color: "text-[#2d6fa6]" },
+    { label: "Rewards Distributed", value: `${(analytics.totals.treasuryBalance / 1e18).toLocaleString()} ECO`, delta: "Total treasury", icon: Coins, color: "text-[#7a3b9c]" },
+    { label: "Total Users", value: analytics.totals.totalUsers.toLocaleString(), delta: "All time", icon: TrendingUp, color: "text-[#a05c1a]" },
+  ] : [];
+
+  if (loading) {
+    return (
+      <SponsorShell>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+        </div>
+      </SponsorShell>
+    );
+  }
+
   return (
     <SponsorShell>
       <div className="space-y-8">
@@ -105,23 +139,16 @@ export default function SponsorDashboard() {
             </div>
           </div>
 
-          {/* Recent activity */}
-          <div className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)] lg:col-span-2">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#5a6061]">
-              Recent Activity
-            </h2>
-            <div className="divide-y divide-[#f2f4f4]">
-              {recentActivity.map((item) => (
-                <div key={item.id} className="flex items-start justify-between py-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[#3b6934]">
-                      {item.type}
-                    </p>
-                    <p className="mt-0.5 text-sm text-[#2d3435]">{item.desc}</p>
-                  </div>
-                  <span className="ml-4 shrink-0 text-xs text-[#5a6061]">{item.time}</span>
-                </div>
-              ))}
+          {/* Recent Activity */}
+          <div className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+            <h2 className="text-lg font-semibold text-[#2d3435] mb-4">Recent Activity</h2>
+            <div className="space-y-3">
+              <p className="text-sm text-[#5a6061]">
+                {analytics?.totals.verificationsThisMonth || 0} verifications this month
+              </p>
+              <p className="text-xs text-[#5a6061]">
+                Last updated: {analytics?.updatedAt ? new Date(analytics.updatedAt).toLocaleString() : 'N/A'}
+              </p>
             </div>
           </div>
         </div>

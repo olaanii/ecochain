@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useInterwovenKit } from "@initia/interwovenkit-react";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
+import { initiaAppchain } from "@/lib/blockchain/wagmi-config";
 import {
   storeWalletAddress,
   clearWalletAddress,
@@ -38,8 +39,9 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 const EXPECTED_CHAIN_ID = process.env.NEXT_PUBLIC_INITIA_CHAIN_ID || "ecochain105";
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const { initiaAddress, openConnect, username } = useInterwovenKit();
+  const { initiaAddress, openConnect, openWallet, username } = useInterwovenKit();
   const { address: evmAddress } = useAccount();
+  const { disconnect: wagmiDisconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   
   const [error, setError] = useState<Error | undefined>();
@@ -99,7 +101,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const handleDisconnect = async () => {
     try {
       setError(undefined);
-      // InterwovenKit handles disconnect through the wallet drawer
+
+      // Disconnect EVM side via wagmi
+      wagmiDisconnect();
+
+      // Open Initia wallet drawer so user can disconnect from the Initia side
+      // InterwovenKit doesn't expose a programmatic disconnect,
+      // but openWallet lets the user manage their connection
+      openWallet();
+
       // Clear session storage
       clearWalletAddress();
     } catch (err) {
@@ -112,13 +122,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const handleSwitchNetwork = async (targetChainId: string) => {
     try {
       setError(undefined);
-      // Update local state for the network switch
+
+      // If the target is our Initia appchain, use wagmi switchChain for the EVM side
+      const numericChainId = Number(targetChainId);
+      if (!isNaN(numericChainId)) {
+        await switchChain({ chainId: numericChainId as const });
+      } else {
+        // For non-EVM chains (bech32 chain IDs like "ecochain105"),
+        // the InterwovenKit handles chain switching internally via the wallet drawer
+        openWallet();
+      }
+
+      // Update local state after successful switch
       setCurrentChainId(targetChainId);
       setIsCorrectChain(targetChainId === EXPECTED_CHAIN_ID);
       storeWalletChainId(targetChainId);
-      
-      // Note: Full wagmi switchChain implementation would go here
-      // This is a placeholder that updates state for now
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error);

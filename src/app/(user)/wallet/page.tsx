@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Coins,
   ArrowUpRight,
@@ -10,37 +10,132 @@ import {
   Unlock,
   TrendingUp,
   ExternalLink,
+  Loader2,
+  Wallet,
 } from "lucide-react";
 import clsx from "clsx";
+import { useWallet } from "@/contexts/wallet-context";
 
 type Tab = "history" | "staking";
 
-const balance = {
-  available: 4280,
-  staked: 1200,
-  pendingRewards: 84,
-  total: 5564,
-};
+interface Balance {
+  total: string;
+  available: string;
+  staked: string;
+  pending: string;
+}
 
-const transactions = [
-  { id: "1", type: "earned", task: "Tree Planting Drive", amount: 150, date: "Apr 18, 2026", status: "confirmed" },
-  { id: "2", type: "earned", task: "Urban Cycling Challenge", amount: 200, date: "Apr 17, 2026", status: "confirmed" },
-  { id: "3", type: "staked", task: "Staking Deposit", amount: -500, date: "Apr 15, 2026", status: "confirmed" },
-  { id: "4", type: "earned", task: "Recycling Sprint", amount: 120, date: "Apr 14, 2026", status: "confirmed" },
-  { id: "5", type: "unstaked", task: "Staking Withdrawal", amount: 300, date: "Apr 12, 2026", status: "confirmed" },
-  { id: "6", type: "earned", task: "Beach Cleanup", amount: 100, date: "Apr 10, 2026", status: "pending" },
-  { id: "7", type: "staked", task: "Staking Deposit", amount: -700, date: "Apr 8, 2026", status: "confirmed" },
-  { id: "8", type: "earned", task: "Home Energy Audit", amount: 300, date: "Apr 5, 2026", status: "confirmed" },
-];
+interface Transaction {
+  id: string;
+  amount: number;
+  type: string;
+  source: string;
+  transactionHash: string | null;
+  metadata: unknown;
+  createdAt: string;
+}
 
-const typeStyle: Record<string, { icon: typeof ArrowUpRight; cls: string; prefix: string }> = {
-  earned: { icon: ArrowDownLeft, cls: "text-[var(--color-success)] bg-[var(--color-surface-muted)]", prefix: "+" },
-  staked: { icon: Lock, cls: "text-[var(--color-brand-tertiary)] bg-[var(--color-surface-muted)]", prefix: "" },
-  unstaked: { icon: Unlock, cls: "text-[var(--color-brand-secondary)] bg-[var(--color-surface-muted)]", prefix: "+" },
-};
+interface Stake {
+  id: string;
+  amount: string;
+  apy: string;
+  startTime: string;
+  duration: number;
+  endTime: string;
+  status: string;
+  accruedRewards: string;
+}
 
 export default function WalletPage() {
+  const { isConnected, initiaAddress, address } = useWallet();
   const [tab, setTab] = useState<Tab>("history");
+  const [balance, setBalance] = useState<Balance | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [stakes, setStakes] = useState<Stake[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch balance
+        const balanceRes = await fetch(`/api/balance?address=${address}`);
+        if (balanceRes.ok) {
+          const balanceData = await balanceRes.json();
+          if (balanceData.success) {
+            setBalance(balanceData.balance);
+          }
+        }
+
+        // Fetch transactions
+        const txRes = await fetch('/api/transactions?limit=20');
+        if (txRes.ok) {
+          const txData = await txRes.json();
+          if (txData.success) {
+            setTransactions(txData.data);
+          }
+        }
+
+        // Fetch stakes
+        const stakeRes = await fetch('/api/stake');
+        if (stakeRes.ok) {
+          const stakeData = await stakeRes.json();
+          if (stakeData.success) {
+            setStakes(stakeData.stakes || []);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch wallet data:', err);
+        setError('Failed to load wallet data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [isConnected, address]);
+
+  if (!isConnected) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="text-center">
+          <Wallet className="mx-auto mb-4 h-12 w-12 text-[var(--color-text-muted)]" />
+          <p className="text-lg font-medium text-[var(--color-text-dark)]">Connect your wallet</p>
+          <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+            Connect your Initia wallet to view your balance and transactions.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <p className="text-red-500">{error}</p>
+      </div>
+    );
+  }
+
+  const available = balance ? Number(balance.available) / 1e18 : 0;
+  const staked = balance ? Number(balance.staked) / 1e18 : 0;
+  const pendingRewards = balance ? Number(balance.pending) / 1e18 : 0;
+  const total = balance ? Number(balance.total) / 1e18 : 0;
 
   return (
     <div className="space-y-8">
@@ -59,10 +154,10 @@ export default function WalletPage() {
       {/* Balance cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Available", value: balance.available, icon: Coins, color: "text-[var(--color-success)]" },
-          { label: "Staked", value: balance.staked, icon: Lock, color: "text-[var(--color-brand-tertiary)]" },
-          { label: "Pending Rewards", value: balance.pendingRewards, icon: Clock, color: "text-[var(--color-brand-accent)]" },
-          { label: "Total Balance", value: balance.total, icon: TrendingUp, color: "text-[var(--color-brand-secondary)]" },
+          { label: "Available", value: available, icon: Coins, color: "text-[var(--color-success)]" },
+          { label: "Staked", value: staked, icon: Lock, color: "text-[var(--color-brand-tertiary)]" },
+          { label: "Pending Rewards", value: pendingRewards, icon: Clock, color: "text-[var(--color-brand-accent)]" },
+          { label: "Total Balance", value: total, icon: TrendingUp, color: "text-[var(--color-brand-secondary)]" },
         ].map((s) => (
           <div
             key={s.label}
@@ -112,42 +207,47 @@ export default function WalletPage() {
             <thead>
               <tr className="border-b border-[var(--color-surface-muted)] text-left">
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Type</th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Task</th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Source</th>
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Amount</th>
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Date</th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-surface-muted)]">
-              {transactions.map((tx) => {
-                const style = typeStyle[tx.type];
-                const Icon = style.icon;
-                return (
-                  <tr key={tx.id} className="transition-colors hover:bg-[var(--color-surface)]">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`rounded-lg p-1.5 ${style.cls}`}>
-                          <Icon size={14} />
+              {transactions.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-[var(--color-text-muted)]">
+                    No transactions yet.
+                  </td>
+                </tr>
+              ) : (
+                transactions.map((tx) => {
+                  const amount = Number(tx.amount) / 1e18;
+                  const isPositive = amount >= 0;
+                  const typeStyle = isPositive
+                    ? { icon: ArrowDownLeft, cls: "text-[var(--color-success)] bg-[var(--color-surface-muted)]", prefix: "+" }
+                    : { icon: Lock, cls: "text-[var(--color-brand-tertiary)] bg-[var(--color-surface-muted)]", prefix: "" };
+                  const Icon = typeStyle.icon;
+                  return (
+                    <tr key={tx.id} className="transition-colors hover:bg-[var(--color-surface)]">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`rounded-lg p-1.5 ${typeStyle.cls}`}>
+                            <Icon size={14} />
+                          </div>
+                          <span className="capitalize font-medium text-[var(--color-text-dark)]">{tx.type}</span>
                         </div>
-                        <span className="capitalize font-medium text-[var(--color-text-dark)]">{tx.type}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-[var(--color-text-muted)]">{tx.task}</td>
-                    <td className={`px-6 py-4 font-semibold ${tx.amount > 0 ? "text-[var(--color-success)]" : "text-[var(--color-text-dark)]"}`}>
-                      {style.prefix}{Math.abs(tx.amount).toLocaleString()} ECO
-                    </td>
-                    <td className="px-6 py-4 text-[var(--color-text-muted)]">{tx.date}</td>
-                    <td className="px-6 py-4">
-                      <span className={clsx(
-                        "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                        tx.status === "confirmed" ? "bg-[var(--color-surface-muted)] text-[var(--color-success)]" : "bg-[var(--color-surface-muted)] text-[var(--color-brand-accent)]",
-                      )}>
-                        {tx.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td className="px-6 py-4 text-[var(--color-text-muted)]">{tx.source || '—'}</td>
+                      <td className={`px-6 py-4 font-semibold ${isPositive ? "text-[var(--color-success)]" : "text-[var(--color-text-dark)]"}`}>
+                        {typeStyle.prefix}{Math.abs(amount).toLocaleString()} ECO
+                      </td>
+                      <td className="px-6 py-4 text-[var(--color-text-muted)]">
+                        {new Date(tx.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -157,31 +257,56 @@ export default function WalletPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-2xl bg-[var(--color-surface-elevated)] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
             <h2 className="mb-4 text-base font-semibold text-[var(--color-text-dark)]">Staking Position</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
-                <span className="text-sm text-[var(--color-text-muted)]">Staked Amount</span>
-                <span className="text-sm font-semibold text-[var(--color-text-dark)]">{balance.staked.toLocaleString()} ECO</span>
+            {stakes.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-muted)]">No active stakes.</p>
+            ) : (
+              <div className="space-y-4">
+                {stakes.map((stake) => {
+                  const amount = Number(stake.amount) / 1e18;
+                  const apy = Number(stake.apy) / 100;
+                  const earned = Number(stake.accruedRewards) / 1e18;
+                  return (
+                    <div key={stake.id} className="rounded-xl bg-[var(--color-surface-muted)] p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-muted)]">Staked Amount</span>
+                        <span className="text-sm font-semibold text-[var(--color-text-dark)]">{amount.toLocaleString()} ECO</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-muted)]">APY</span>
+                        <span className="text-sm font-semibold text-[var(--color-success)]">{apy}%</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-muted)]">Lock Period</span>
+                        <span className="text-sm font-semibold text-[var(--color-text-dark)]">{stake.duration} days</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-muted)]">Unlocks</span>
+                        <span className="text-sm font-semibold text-[var(--color-text-dark)]">
+                          {new Date(stake.endTime).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-muted)]">Earned</span>
+                        <span className="text-sm font-semibold text-[var(--color-success)]">+{earned.toFixed(2)} ECO</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
-                <span className="text-sm text-[var(--color-text-muted)]">APY</span>
-                <span className="text-sm font-semibold text-[var(--color-success)]">8.2%</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
-                <span className="text-sm text-[var(--color-text-muted)]">Lock Period</span>
-                <span className="text-sm font-semibold text-[var(--color-text-dark)]">30 days</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
-                <span className="text-sm text-[var(--color-text-muted)]">Unlocks</span>
-                <span className="text-sm font-semibold text-[var(--color-text-dark)]">May 15, 2026</span>
-              </div>
-            </div>
+            )}
             <div className="mt-6 flex gap-3">
-              <button className="flex-1 rounded-xl bg-[var(--color-text-dark)] py-2.5 text-sm font-medium text-[var(--color-text-inverse)] transition-opacity hover:opacity-80">
+              <a
+                href="/stake"
+                className="flex-1 rounded-xl bg-[var(--color-text-dark)] py-2.5 text-center text-sm font-medium text-[var(--color-text-inverse)] transition-opacity hover:opacity-80"
+              >
                 Stake More
-              </button>
-              <button className="flex-1 rounded-xl border border-[var(--color-surface-muted)] py-2.5 text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[var(--color-surface-muted)]">
+              </a>
+              <a
+                href="/unstake"
+                className="flex-1 rounded-xl border border-[var(--color-surface-muted)] py-2.5 text-center text-sm font-medium text-[var(--color-text-dark)] transition-colors hover:bg-[var(--color-surface-muted)]"
+              >
                 Unstake
-              </button>
+              </a>
             </div>
           </div>
 
@@ -190,20 +315,15 @@ export default function WalletPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
                 <span className="text-sm text-[var(--color-text-muted)]">Earned (Pending)</span>
-                <span className="text-sm font-semibold text-[var(--color-success)]">{balance.pendingRewards.toLocaleString()} ECO</span>
+                <span className="text-sm font-semibold text-[var(--color-success)]">{pendingRewards.toFixed(2)} ECO</span>
               </div>
               <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
                 <span className="text-sm text-[var(--color-text-muted)]">Lifetime Staking Rewards</span>
-                <span className="text-sm font-semibold text-[var(--color-text-dark)]">312 ECO</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3">
-                <span className="text-sm text-[var(--color-text-muted)]">Next Payout</span>
-                <span className="text-sm font-semibold text-[var(--color-text-dark)]">Apr 22, 2026</span>
+                <span className="text-sm font-semibold text-[var(--color-text-dark)]">
+                  {stakes.reduce((sum, s) => sum + Number(s.accruedRewards) / 1e18, 0).toFixed(2)} ECO
+                </span>
               </div>
             </div>
-            <button className="mt-6 w-full rounded-xl bg-[var(--color-success)] py-2.5 text-sm font-medium text-[var(--color-text-inverse)] transition-opacity hover:opacity-80">
-              Claim Rewards
-            </button>
           </div>
         </div>
       )}

@@ -1,49 +1,75 @@
 "use client";
 
-import { Lock, Unlock, Clock, TrendingUp, Coins } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Lock, Unlock, Clock, TrendingUp, Coins, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { ProductShell } from "@/components/layout/product-shell";
+import { useWallet } from "@/contexts/wallet-context";
 
-const STAKES = [
-  {
-    id: "1",
-    amount: 500,
-    apy: 8,
-    days: 90,
-    startDate: "Jan 15, 2026",
-    endDate: "Apr 15, 2026",
-    status: "matured",
-    earned: 12.3,
-    totalValue: 512.3,
-  },
-  {
-    id: "2",
-    amount: 1000,
-    apy: 12,
-    days: 180,
-    startDate: "Feb 1, 2026",
-    endDate: "Jul 31, 2026",
-    status: "locked",
-    earned: 45.2,
-    totalValue: 1045.2,
-  },
-  {
-    id: "3",
-    amount: 200,
-    apy: 5,
-    days: 30,
-    startDate: "Mar 20, 2026",
-    endDate: "Apr 19, 2026",
-    status: "locked",
-    earned: 0.8,
-    totalValue: 200.8,
-  },
-];
+interface Stake {
+  id: string;
+  amount: string;
+  apy: string;
+  startTime: string;
+  duration: number;
+  endTime: string;
+  status: string;
+  accruedRewards: string;
+}
 
 export default function StakesPage() {
-  const totalStaked = STAKES.reduce((sum, s) => sum + s.amount, 0);
-  const totalEarned = STAKES.reduce((sum, s) => sum + s.earned, 0);
-  const maturedCount = STAKES.filter((s) => s.status === "matured").length;
+  const { isConnected } = useWallet();
+  const [stakes, setStakes] = useState<Stake[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isConnected) {
+      setLoading(false);
+      return;
+    }
+    const fetchStakes = async () => {
+      try {
+        const res = await fetch('/api/stake');
+        const data = await res.json();
+        if (data.success) {
+          setStakes(data.stakes);
+        }
+      } catch (err) {
+        console.error('Failed to fetch stakes:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStakes();
+  }, [isConnected]);
+
+  const totalStaked = stakes.reduce((sum, s) => sum + Number(s.amount) / 1e18, 0);
+  const totalEarned = stakes.reduce((sum, s) => sum + Number(s.accruedRewards) / 1e18, 0);
+  const maturedCount = stakes.filter((s) => s.status === "matured" || new Date(s.endTime) < new Date()).length;
+
+  if (!isConnected) {
+    return (
+      <ProductShell>
+        <div className="mx-auto max-w-4xl px-6 py-8">
+          <div className="text-center py-12">
+            <p className="text-[var(--color-text-muted)]">Connect your wallet to view stakes.</p>
+          </div>
+        </div>
+      </ProductShell>
+    );
+  }
+
+  if (loading) {
+    return (
+      <ProductShell>
+        <div className="mx-auto max-w-4xl px-6 py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+          </div>
+        </div>
+      </ProductShell>
+    );
+  }
 
   return (
     <ProductShell>
@@ -124,73 +150,79 @@ export default function StakesPage() {
           <h2 className="text-lg font-semibold text-[var(--color-text-dark)]">
             Active Positions
           </h2>
-          {STAKES.map((stake) => (
-            <div
-              key={stake.id}
-              className="rounded-2xl border border-[var(--color-surface-muted)] bg-[var(--color-surface-elevated)] p-5"
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-4">
-                  <div
-                    className={`rounded-xl p-2.5 ${
-                      stake.status === "matured"
-                        ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
-                        : "bg-[var(--color-brand-accent)]/10 text-[var(--color-brand-accent)]"
-                    }`}
-                  >
-                    {stake.status === "matured" ? <Unlock size={20} /> : <Lock size={20} />}
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-[var(--color-text-dark)]">
-                      {stake.amount.toLocaleString()} ECO
-                    </p>
-                    <div className="mt-1 flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                      <TrendingUp size={14} />
-                      <span>{stake.apy}% APY</span>
-                      <span>·</span>
-                      <Clock size={14} />
-                      <span>{stake.days} days</span>
+          {stakes.length === 0 ? (
+            <div className="text-center py-12 text-[var(--color-text-muted)]">
+              No active stakes.
+            </div>
+          ) : (
+            stakes.map((stake) => (
+              <div
+                key={stake.id}
+                className="rounded-2xl border border-[var(--color-surface-muted)] bg-[var(--color-surface-elevated)] p-5"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`rounded-xl p-2.5 ${
+                        stake.status === "matured" || new Date(stake.endTime) < new Date()
+                          ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
+                          : "bg-[var(--color-brand-accent)]/10 text-[var(--color-brand-accent)]"
+                      }`}
+                    >
+                      {stake.status === "matured" || new Date(stake.endTime) < new Date() ? <Unlock size={20} /> : <Lock size={20} />}
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold text-[var(--color-text-dark)]">
+                        {(Number(stake.amount) / 1e18).toLocaleString()} ECO
+                      </p>
+                      <div className="mt-1 flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                        <TrendingUp size={14} />
+                        <span>{(Number(stake.apy) / 100).toFixed(0)}% APY</span>
+                        <span>·</span>
+                        <Clock size={14} />
+                        <span>{stake.duration} days</span>
+                      </div>
                     </div>
                   </div>
+                  <div className="text-right">
+                    <span
+                      className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+                        stake.status === "matured" || new Date(stake.endTime) < new Date()
+                          ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
+                          : "bg-[var(--color-brand-accent)]/10 text-[var(--color-brand-accent)]"
+                      }`}
+                    >
+                      {stake.status === "matured" || new Date(stake.endTime) < new Date() ? "Ready" : "Locked"}
+                    </span>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                      Ends {new Date(stake.endTime).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span
-                    className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                      stake.status === "matured"
-                        ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
-                        : "bg-[var(--color-brand-accent)]/10 text-[var(--color-brand-accent)]"
-                    }`}
-                  >
-                    {stake.status === "matured" ? "Ready" : "Locked"}
-                  </span>
-                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                    Ends {stake.endDate}
-                  </p>
-                </div>
-              </div>
 
-              <div className="mt-4 grid grid-cols-3 gap-4 border-t border-[var(--color-surface-muted)] pt-4">
-                <div>
-                  <p className="text-xs text-[var(--color-text-muted)]">Principal</p>
-                  <p className="text-sm font-medium text-[var(--color-text-dark)]">
-                    {stake.amount.toLocaleString()} ECO
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--color-text-muted)]">Accrued Rewards</p>
-                  <p className="text-sm font-medium text-[var(--color-success)]">
-                    +{stake.earned.toFixed(2)} ECO
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--color-text-muted)]">Total Value</p>
-                  <p className="text-sm font-medium text-[var(--color-text-dark)]">
-                    {stake.totalValue.toFixed(2)} ECO
-                  </p>
+                <div className="mt-4 grid grid-cols-3 gap-4 border-t border-[var(--color-surface-muted)] pt-4">
+                  <div>
+                    <p className="text-xs text-[var(--color-text-muted)]">Principal</p>
+                    <p className="text-sm font-medium text-[var(--color-text-dark)]">
+                      {(Number(stake.amount) / 1e18).toLocaleString()} ECO
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[var(--color-text-muted)]">Accrued Rewards</p>
+                    <p className="text-sm font-medium text-[var(--color-success)]">
+                      +{(Number(stake.accruedRewards) / 1e18).toFixed(2)} ECO
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[var(--color-text-muted)]">Total Value</p>
+                    <p className="text-sm font-medium text-[var(--color-text-dark)]">
+                      {((Number(stake.amount) + Number(stake.accruedRewards)) / 1e18).toFixed(2)} ECO
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </ProductShell>

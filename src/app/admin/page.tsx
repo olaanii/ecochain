@@ -1,23 +1,21 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
-import { Users, ClipboardCheck, ShieldAlert, Activity, TrendingUp, AlertTriangle } from "lucide-react";
+import { Users, ClipboardCheck, ShieldAlert, Activity, TrendingUp, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 
-const stats = [
-  { label: "Total Users", value: "3,841", delta: "+124 this week", icon: Users, color: "text-[#2d6fa6]", href: "/admin/users" },
-  { label: "Pending Reviews", value: "47", delta: "12 high-fraud", icon: ClipboardCheck, color: "text-[#a05c1a]", href: "/admin/review" },
-  { label: "Fraud Alerts", value: "9", delta: "3 critical", icon: ShieldAlert, color: "text-red-600", href: "/admin/fraud" },
-  { label: "Daily Active Users", value: "612", delta: "+8% vs yesterday", icon: Activity, color: "text-[#3b6934]", href: "/admin/analytics" },
-];
-
-const recentAlerts = [
-  { id: "1", severity: "critical", msg: "User @anon92 flagged: fraud score 0.96", time: "5 min ago" },
-  { id: "2", severity: "warning", msg: "Spike in rejected verifications — Recycling tasks", time: "32 min ago" },
-  { id: "3", severity: "info", msg: "New sponsor registered: GreenFleet Ltd", time: "1 hr ago" },
-  { id: "4", severity: "warning", msg: "Pool balance low for 'Earth Month' campaign", time: "2 hr ago" },
-  { id: "5", severity: "info", msg: "DAO proposal #14 passed quorum", time: "3 hr ago" },
-];
+interface AnalyticsData {
+  totals: {
+    co2OffsetKg: number;
+    totalUsers: number;
+    activeUsers30d: number;
+    verificationsThisMonth: number;
+    treasuryBalance: number;
+    activeTasks: number;
+  };
+  updatedAt: string;
+}
 
 const severityStyle: Record<string, string> = {
   critical: "bg-red-100 text-red-700",
@@ -26,6 +24,41 @@ const severityStyle: Record<string, string> = {
 };
 
 export default function AdminDashboard() {
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const res = await fetch('/api/analytics/metrics');
+        const data = await res.json();
+        setAnalytics(data);
+      } catch (err) {
+        console.error('Failed to fetch analytics:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, []);
+
+  const stats = analytics ? [
+    { label: "Total Users", value: analytics.totals.totalUsers.toLocaleString(), delta: "All time", icon: Users, color: "text-[#2d6fa6]", href: "/admin/users" },
+    { label: "Active Users", value: analytics.totals.activeUsers30d.toLocaleString(), delta: "Last 30 days", icon: Activity, color: "text-[#3b6934]", href: "/admin/analytics" },
+    { label: "Verifications", value: analytics.totals.verificationsThisMonth.toLocaleString(), delta: "This month", icon: ClipboardCheck, color: "text-[#a05c1a]", href: "/admin/review" },
+    { label: "Active Tasks", value: analytics.totals.activeTasks.toString(), delta: "Live", icon: TrendingUp, color: "text-[#2d6fa6]", href: "/admin/analytics" },
+  ] : [];
+
+  if (loading) {
+    return (
+      <AdminShell>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+        </div>
+      </AdminShell>
+    );
+  }
+
   return (
     <AdminShell>
       <div className="space-y-8">
@@ -92,21 +125,16 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Recent alerts */}
-          <div className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)] lg:col-span-2">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#5a6061]">Recent Alerts</h2>
-            <div className="divide-y divide-[#f2f4f4]">
-              {recentAlerts.map((alert) => (
-                <div key={alert.id} className="flex items-start justify-between py-3">
-                  <div className="flex items-start gap-3">
-                    <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${severityStyle[alert.severity]}`}>
-                      {alert.severity}
-                    </span>
-                    <p className="text-sm text-[#2d3435]">{alert.msg}</p>
-                  </div>
-                  <span className="ml-4 shrink-0 text-xs text-[#5a6061]">{alert.time}</span>
-                </div>
-              ))}
+          {/* Recent Alerts */}
+          <div className="rounded-2xl bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#5a6061]">System Status</h2>
+            <div className="space-y-3">
+              <p className="text-sm text-[#5a6061]">
+                Last updated: {analytics?.updatedAt ? new Date(analytics.updatedAt).toLocaleString() : 'N/A'}
+              </p>
+              <p className="text-sm text-[#5a6061]">
+                Treasury Balance: {analytics?.totals.treasuryBalance ? `${(analytics.totals.treasuryBalance / 1e18).toLocaleString()} ECO` : '0 ECO'}
+              </p>
             </div>
           </div>
         </div>

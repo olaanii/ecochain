@@ -1,84 +1,76 @@
 "use client";
 
-import { ArrowRight, CheckCircle, Clock, AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowRight, CheckCircle, Clock, AlertCircle, ExternalLink, RefreshCw, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { ProductShell } from "@/components/layout/product-shell";
 
-const BRIDGE_TRANSACTIONS = [
-  {
-    id: "1",
-    from: "Initia",
-    to: "Ethereum",
-    amount: 1000,
-    token: "ECO",
-    status: "completed" as const,
-    date: "Apr 18, 2026",
-    txHash: "0x7a3f...9e2d",
-    fee: 5,
-    duration: "~5 mins",
-  },
-  {
-    id: "2",
-    from: "Ethereum",
-    to: "Initia",
-    amount: 500,
-    token: "ECO",
-    status: "pending" as const,
-    date: "Apr 18, 2026",
-    txHash: "0x4b8c...2a5f",
-    fee: 8,
-    duration: "~15 mins remaining",
-  },
-  {
-    id: "3",
-    from: "Initia",
-    to: "Cosmos",
-    amount: 250,
-    token: "ECO",
-    status: "completed" as const,
-    date: "Apr 15, 2026",
-    txHash: "0x9d2e...7c4b",
-    fee: 3,
-    duration: "~3 mins",
-  },
-  {
-    id: "4",
-    from: "Ethereum",
-    to: "Initia",
-    amount: 2000,
-    token: "ECO",
-    status: "failed" as const,
-    date: "Apr 12, 2026",
-    txHash: "0x1f3a...8b2e",
-    fee: 0,
-    duration: "Failed",
-    error: "Insufficient gas",
-  },
-];
+interface BridgeTransaction {
+  id: string;
+  amount: number;
+  denom: string;
+  status: string;
+  targetChain?: string;
+  transactionLink?: string;
+  timestamp: string;
+  builder?: string;
+}
 
-const STATUS_ICONS = {
+const STATUS_ICONS: Record<string, any> = {
   completed: CheckCircle,
-  pending: Clock,
+  queued: Clock,
   failed: AlertCircle,
 };
 
-const STATUS_STYLES = {
+const STATUS_STYLES: Record<string, string> = {
   completed: "text-[var(--color-success)] bg-[var(--color-success)]/10",
-  pending: "text-[var(--color-brand-accent)] bg-[var(--color-brand-accent)]/10",
+  queued: "text-[var(--color-brand-accent)] bg-[var(--color-brand-accent)]/10",
   failed: "text-red-600 bg-red-50",
 };
 
 export default function BridgeHistoryPage() {
+  const [transactions, setTransactions] = useState<BridgeTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch('/api/bridge');
+        const data = await res.json();
+        if (data.history) {
+          setTransactions(data.history);
+        }
+      } catch (err) {
+        console.error('Failed to fetch bridge history:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, []);
+
   const stats = {
-    total: BRIDGE_TRANSACTIONS.length,
-    completed: BRIDGE_TRANSACTIONS.filter((t) => t.status === "completed").length,
-    pending: BRIDGE_TRANSACTIONS.filter((t) => t.status === "pending").length,
-    totalVolume: BRIDGE_TRANSACTIONS.filter((t) => t.status === "completed").reduce((sum, t) => sum + t.amount, 0),
+    total: transactions.length,
+    completed: transactions.filter((t) => t.status === "completed").length,
+    pending: transactions.filter((t) => t.status === "queued").length,
+    totalVolume: transactions.filter((t) => t.status === "completed").reduce((sum, t) => sum + t.amount, 0),
   };
+
+  if (loading) {
+    return (
+      <ProductShell>
+        <div className="mx-auto max-w-4xl px-6 py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-muted)]" />
+          </div>
+        </div>
+      </ProductShell>
+    );
+  }
 
   return (
     <ProductShell>
-      <div className="mx-auto max-w-3xl px-6 py-8">
+      <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="mb-8">
           <h1
             className="text-3xl font-semibold tracking-[-0.75px] text-[var(--color-text-dark)]"
@@ -87,7 +79,7 @@ export default function BridgeHistoryPage() {
             Bridge History
           </h1>
           <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-            Track your cross-chain transfers and their status.
+            Track your cross-chain transfers and bridge transactions.
           </p>
         </div>
 
@@ -125,78 +117,67 @@ export default function BridgeHistoryPage() {
         </div>
 
         {/* Transactions List */}
-        <div className="space-y-3">
-          {BRIDGE_TRANSACTIONS.map((tx) => {
-            const Icon = STATUS_ICONS[tx.status];
-            return (
-              <div
-                key={tx.id}
-                className="rounded-2xl border border-[var(--color-surface-muted)] bg-[var(--color-surface-elevated)] p-5"
+        <div className="space-y-4">
+          {transactions.length === 0 ? (
+            <div className="py-12 text-center">
+              <RefreshCw className="mx-auto mb-3 text-[var(--color-text-muted)]" size={32} />
+              <p className="text-[var(--color-text-muted)]">No bridge transactions yet.</p>
+              <Link
+                href="/bridge"
+                className="mt-2 inline-block text-sm font-medium text-[var(--color-brand-secondary)] hover:underline"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[tx.status]}`}>
-                        <Icon size={12} />
-                        <span className="capitalize">{tx.status}</span>
-                      </span>
-                      <span className="text-xs text-[var(--color-text-muted)]">{tx.date}</span>
+                Start your first transfer
+              </Link>
+            </div>
+          ) : (
+            transactions.map((tx) => {
+              const StatusIcon = STATUS_ICONS[tx.status] || Clock;
+              const statusStyle = STATUS_STYLES[tx.status] || STATUS_STYLES.queued;
+
+              return (
+                <div
+                  key={tx.id}
+                  className="rounded-2xl border border-[var(--color-surface-muted)] bg-[var(--color-surface-elevated)] p-5"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className={`rounded-xl p-2.5 ${statusStyle}`}>
+                          <StatusIcon size={18} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-[var(--color-text-dark)]">
+                            {tx.denom} → {tx.targetChain || 'Unknown'}
+                          </p>
+                          <p className="text-xs text-[var(--color-text-muted)]">
+                            {new Date(tx.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-[var(--color-text-dark)]">
+                          {tx.amount.toLocaleString()} {tx.denom}
+                        </p>
+                        <p className="text-xs text-[var(--color-text-muted)] capitalize">{tx.status}</p>
+                      </div>
                     </div>
-
-                    {/* Route */}
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="rounded-lg bg-[var(--color-surface-muted)] px-2 py-1 text-sm font-medium text-[var(--color-text-dark)]">
-                        {tx.from}
-                      </span>
-                      <ArrowRight size={16} className="text-[var(--color-text-muted)]" />
-                      <span className="rounded-lg bg-[var(--color-surface-muted)] px-2 py-1 text-sm font-medium text-[var(--color-text-dark)]">
-                        {tx.to}
-                      </span>
-                    </div>
-
-                    {/* Amount */}
-                    <p className="mt-2 text-lg font-semibold text-[var(--color-text-dark)]">
-                      {tx.amount.toLocaleString()} {tx.token}
-                    </p>
-
-                    {/* Details */}
-                    <div className="mt-2 flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
-                      <span>Fee: {tx.fee} ECO</span>
-                      <span>Duration: {tx.duration}</span>
-                      <span className="font-mono">{tx.txHash}</span>
-                    </div>
-
-                    {tx.error && (
-                      <p className="mt-2 text-xs text-red-600">
-                        Error: {tx.error}
-                      </p>
+                    {tx.transactionLink && (
+                      <a
+                        href={tx.transactionLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-[var(--color-brand-secondary)] hover:underline"
+                      >
+                        <ExternalLink size={12} />
+                        View Transaction
+                      </a>
                     )}
                   </div>
-
-                  <a
-                    href="#"
-                    className="ml-4 flex items-center gap-1 text-xs font-medium text-[var(--color-brand-secondary)] hover:underline"
-                  >
-                    View <ExternalLink size={12} />
-                  </a>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
-
-        {BRIDGE_TRANSACTIONS.length === 0 && (
-          <div className="py-12 text-center">
-            <RefreshCw className="mx-auto mb-3 text-[var(--color-text-muted)]" size={32} />
-            <p className="text-[var(--color-text-muted)]">No bridge transactions yet.</p>
-            <Link
-              href="/bridge"
-              className="mt-2 inline-block text-sm font-medium text-[var(--color-brand-secondary)] hover:underline"
-            >
-              Start your first transfer
-            </Link>
-          </div>
-        )}
       </div>
     </ProductShell>
   );
