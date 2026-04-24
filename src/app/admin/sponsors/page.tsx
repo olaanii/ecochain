@@ -11,6 +11,7 @@ interface Sponsor {
   displayName: string | null;
   username: string | null;
   initiaAddress: string;
+  email: string | null;
   role: string;
   createdAt: string;
   _count?: { verifications: number };
