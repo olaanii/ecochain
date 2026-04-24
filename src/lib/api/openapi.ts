@@ -270,6 +270,207 @@ export function generateOpenApiSpec(): Record<string, unknown> {
         },
       },
     },
+    "/api/health": {
+      get: {
+        operationId: "healthCheck",
+        summary: "Health check",
+        description: "Check API health status",
+        tags: ["Health"],
+        responses: {
+          "200": {
+            description: "Healthy",
+            content: { "application/json": { schema: { type: "object", properties: { status: { type: "string" } } } } },
+          },
+        },
+      },
+    },
+    "/api/me": {
+      get: {
+        operationId: "getCurrentUser",
+        summary: "Get current user",
+        description: "Get authenticated user profile",
+        tags: ["User"],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "User profile",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    role: { type: "string", enum: ["user", "sponsor", "admin", "owner"] },
+                    displayName: { type: "string" },
+                    initiaAddress: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Unauthorized" },
+          "404": { description: "User not found" },
+        },
+      },
+      patch: {
+        operationId: "updateCurrentUser",
+        summary: "Update current user",
+        description: "Update authenticated user profile (e.g., role)",
+        tags: ["User"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  role: { type: "string", enum: ["user", "sponsor", "admin"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "User updated",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    role: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "Invalid request" },
+          "401": { description: "Unauthorized" },
+          "502": { description: "Role sync failed" },
+        },
+      },
+    },
+    "/api/rewards": {
+      get: {
+        operationId: "getRewards",
+        summary: "Get user rewards",
+        description: "Get rewards history and balance for authenticated user",
+        tags: ["Rewards"],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "Rewards data",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    balance: { type: "string" },
+                    history: { type: "array", items: { type: "object" } },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Unauthorized" },
+        },
+      },
+    },
+    "/api/governance/proposals": {
+      get: {
+        operationId: "getProposals",
+        summary: "Get governance proposals",
+        description: "List all governance proposals",
+        tags: ["Governance"],
+        responses: {
+          "200": {
+            description: "Proposals list",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      title: { type: "string" },
+                      description: { type: "string" },
+                      status: { type: "string" },
+                      startTime: { type: "string", format: "date-time" },
+                      endTime: { type: "string", format: "date-time" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/governance/vote": {
+      post: {
+        operationId: "castVote",
+        summary: "Cast vote on proposal",
+        description: "Submit vote on a governance proposal",
+        tags: ["Governance"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  proposalId: { type: "string" },
+                  support: { type: "boolean" },
+                },
+                required: ["proposalId", "support"],
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Vote cast successfully" },
+          "400": { description: "Invalid request" },
+          "401": { description: "Unauthorized" },
+        },
+      },
+    },
+    "/api/bridge/history": {
+      get: {
+        operationId: "getBridgeHistory",
+        summary: "Get bridge transaction history",
+        description: "Get bridge transaction history for authenticated user",
+        tags: ["Bridge"],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "Bridge history",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      fromChain: { type: "string" },
+                      toChain: { type: "string" },
+                      amount: { type: "string" },
+                      status: { type: "string" },
+                      timestamp: { type: "string", format: "date-time" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Unauthorized" },
+        },
+      },
+    },
   };
 
   return {
@@ -301,6 +502,9 @@ export function generateOpenApiSpec(): Record<string, unknown> {
       { name: "Staking", description: "Token staking operations" },
       { name: "Bridge", description: "Cross-chain bridging" },
       { name: "Rewards", description: "Reward redemption" },
+      { name: "Health", description: "Health check endpoints" },
+      { name: "User", description: "User profile and management" },
+      { name: "Governance", description: "Governance proposals and voting" },
     ],
   };
 }
