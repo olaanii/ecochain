@@ -23,11 +23,13 @@ const nextConfig: NextConfig = {
     const cspDirectives = [
       "default-src 'self'",
       // Allow inline styles from Clerk/wallet widgets; tighten post-audit.
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://assets.initia.xyz",
+      "font-src 'self' https://fonts.gstatic.com https://assets.initia.xyz",
       // 'unsafe-eval' required by wagmi/viem in dev; prod build tree-shakes it
       // but we keep it for now and track removal as a follow-up.
       `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.com https://*.clerk.accounts.dev https://js.stripe.com`,
+      // Allow blob: for Clerk workers
+      "worker-src 'self' blob:",
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob:",
       // RPC, Clerk auth, Sentry, IPFS gateway
