@@ -154,21 +154,21 @@ export async function runPrismaMigrations(connectionString: string): Promise<voi
  * Seed test database with fixtures
  */
 export async function seedTestDatabase(client: Client): Promise<void> {
-  // Insert test users
+  // Insert test users (matching Prisma schema)
   await client.query(`
-    INSERT INTO "User" (id, email, name, role, "createdAt", "updatedAt")
+    INSERT INTO "User" (id, "clerkId", email, "initiaAddress", "displayName", role, "createdAt", "updatedAt")
     VALUES 
-      ('test-user-1', 'test1@example.com', 'Test User 1', 'user', NOW(), NOW()),
-      ('test-user-2', 'test2@example.com', 'Test User 2', 'admin', NOW(), NOW())
+      ('test-user-1', 'clerk_test_1', 'test1@example.com', 'init1testaddress1', 'Test User 1', 'user', NOW(), NOW()),
+      ('test-user-2', 'clerk_test_2', 'test2@example.com', 'init1testaddress2', 'Test User 2', 'admin', NOW(), NOW())
     ON CONFLICT DO NOTHING
   `);
 
-  // Insert test tasks
+  // Insert test tasks (matching Prisma schema)
   await client.query(`
-    INSERT INTO "Task" (id, title, description, status, reward, "createdAt", "updatedAt")
+    INSERT INTO "Task" (id, slug, name, description, "verificationHint", category, "baseReward", "bonusFactor", "verificationMethod", active, "createdAt", "updatedAt")
     VALUES 
-      ('test-task-1', 'Test Task 1', 'Description 1', 'active', 100, NOW(), NOW()),
-      ('test-task-2', 'Test Task 2', 'Description 2', 'pending', 200, NOW(), NOW())
+      ('test-task-1', 'test-task-1', 'Test Task 1', 'Description 1', 'Hint 1', 'transit', 100, 1.0, 'photo', true, NOW(), NOW()),
+      ('test-task-2', 'test-task-2', 'Test Task 2', 'Description 2', 'Hint 2', 'recycling', 200, 1.0, 'api', true, NOW(), NOW())
     ON CONFLICT DO NOTHING
   `);
 }

@@ -1,6 +1,6 @@
 import { describe, beforeAll, afterAll, it, expect } from '@jest/globals';
 import { Client } from 'pg';
-import { setupPostgres, teardownPostgres, seedTestDatabase, isDockerAvailable } from './testcontainers-setup';
+import { setupPostgres, teardownPostgres, seedTestDatabase, runPrismaMigrations, isDockerAvailable } from './testcontainers-setup';
 
 /**
  * Integration Test: Database Operations with Testcontainers
@@ -33,6 +33,11 @@ const skipDocker = process.env.SKIP_DOCKER_TESTS === '1' || !dockerAvailable;
     client = setup.client;
     connectionString = setup.connectionString;
 
+    // Run Prisma migrations to create tables
+    console.log('Running Prisma migrations...');
+    await runPrismaMigrations(connectionString);
+    console.log('Migrations complete.');
+
     // Seed test data
     await seedTestDatabase(client);
   }, 60000); // 60s timeout for container startup
@@ -62,13 +67,15 @@ const skipDocker = process.env.SKIP_DOCKER_TESTS === '1' || !dockerAvailable;
       expect(result.rows.length).toBeGreaterThanOrEqual(2);
       expect(result.rows[0]).toHaveProperty('email');
       expect(result.rows[0]).toHaveProperty('role');
+      expect(result.rows[0]).toHaveProperty('clerkId');
     });
 
     it('should have test tasks', async () => {
       const result = await client.query('SELECT * FROM "Task"');
       expect(result.rows.length).toBeGreaterThanOrEqual(2);
-      expect(result.rows[0]).toHaveProperty('title');
-      expect(result.rows[0]).toHaveProperty('reward');
+      expect(result.rows[0]).toHaveProperty('name');
+      expect(result.rows[0]).toHaveProperty('baseReward');
+      expect(result.rows[0]).toHaveProperty('slug');
     });
 
     it('should find user by email', async () => {
@@ -77,7 +84,7 @@ const skipDocker = process.env.SKIP_DOCKER_TESTS === '1' || !dockerAvailable;
         ['test1@example.com']
       );
       expect(result.rows.length).toBe(1);
-      expect(result.rows[0].name).toBe('Test User 1');
+      expect(result.rows[0].displayName).toBe('Test User 1');
     });
   });
 
@@ -86,8 +93,8 @@ const skipDocker = process.env.SKIP_DOCKER_TESTS === '1' || !dockerAvailable;
       await client.query('BEGIN');
       
       await client.query(`
-        INSERT INTO "User" (id, email, name, role, "createdAt", "updatedAt")
-        VALUES ('tx-test', 'tx@example.com', 'Tx User', 'user', NOW(), NOW())
+        INSERT INTO "User" (id, "clerkId", email, "initiaAddress", "displayName", role, "createdAt", "updatedAt")
+        VALUES ('tx-test', 'clerk_tx', 'tx@example.com', 'init1txaddress', 'Tx User', 'user', NOW(), NOW())
       `);
       
       await client.query('ROLLBACK');
@@ -101,8 +108,8 @@ const skipDocker = process.env.SKIP_DOCKER_TESTS === '1' || !dockerAvailable;
       await client.query('BEGIN');
       
       await client.query(`
-        INSERT INTO "User" (id, email, name, role, "createdAt", "updatedAt")
-        VALUES ('commit-test', 'commit@example.com', 'Commit User', 'user', NOW(), NOW())
+        INSERT INTO "User" (id, "clerkId", email, "initiaAddress", "displayName", role, "createdAt", "updatedAt")
+        VALUES ('commit-test', 'clerk_commit', 'commit@example.com', 'init1commitaddress', 'Commit User', 'user', NOW(), NOW())
       `);
       
       await client.query('COMMIT');

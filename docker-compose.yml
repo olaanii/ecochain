@@ -1,35 +1,165 @@
-version: "3.9"
+# EcoChain Docker Compose - Docker 4.7+ Compatible
+# =============================================================================
+#
+# PROFILES (use with --profile flag):
+#   infra     - Database + Redis only
+#   app       - Next.js app only (requires external DB/Redis)
+#   relayer   - IBC relayer only
+#   dev       - Full dev stack (app + DB + Redis, no relayer)
+#   prod      - Full production stack (all services)
+#
+# USAGE:
+#   docker compose up -d                    # Start default services
+#   docker compose --profile dev up -d      # Start dev stack
+#   docker compose --profile prod up -d     # Start full production stack
+#   docker compose --profile infra up -d  # Start just DB + Redis
+#   docker compose watch                    # Dev mode with file sync
+#   docker compose down -v                  # Stop and remove volumes
+#
+# =============================================================================
+
 services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database
+  # ---------------------------------------------------------------------------
   db:
-    image: postgres:16
+    image: postgres:16-alpine
+    container_name: ecochain-db
     environment:
-      POSTGRES_USER: ecochain
-      POSTGRES_PASSWORD: ecochain
-      POSTGRES_DB: ecochain
+      POSTGRES_USER: ${POSTGRES_USER:-ecochain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecochain}
+      POSTGRES_DB: ${POSTGRES_DB:-ecochain}
     volumes:
       - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecochain} -d ${POSTGRES_DB:-ecochain}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - eco-network
+    profiles:
+      - infra
+      - dev
+      - prod
 
+  # ---------------------------------------------------------------------------
+  # Redis Cache
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ecochain-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - eco-network
+    profiles:
+      - infra
+      - dev
+      - prod
+
+  # ---------------------------------------------------------------------------
+  # Next.js Application
+  # ---------------------------------------------------------------------------
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: ecochain-app
     ports:
       - "3000:3000"
-    depends_on:
-      - db
     environment:
-      DATABASE_URL: postgres://f0b7296a7fbd5dfc8e4c31e0266104bf5094d4b31c6dafadce1e54290fdacc8f:sk_9e571QmXbdktonKT3ffdc@pooled.db.prisma.io:5432/postgres?sslmode=require
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZnVuLWNpdmV0LTUzLmNsZXJrLmFjY291bnRzLmRldiQ
-      CLERK_SECRET_KEY: sk_test_ENB7SCWGVHTdmnIQGi0QYwlQfoxQgun8TAzrpWh6fJ
-      NEXT_PUBLIC_INITIA_CHAIN_ID: ecochain105
-      NEXT_PUBLIC_INITIA_ROUTER_API_URL: https://router.initia.xyz
-      NEXT_PUBLIC_INITIA_REGISTRY_URL: https://registry.initia.xyz
-      NEXT_PUBLIC_INITIA_GLYPH_URL: https://glyph.initia.xyz
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ecochain}:${POSTGRES_PASSWORD:-ecochain}@db:5432/${POSTGRES_DB:-ecochain}?schema=public
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_ENABLED: "1"
+      
+      # Clerk Auth
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET}
+      
+      # Initia Blockchain
+      NEXT_PUBLIC_INITIA_CHAIN_ID: ${NEXT_PUBLIC_INITIA_CHAIN_ID:-ecochain105}
+      NEXT_PUBLIC_INITIA_EVM_CHAIN_ID: ${NEXT_PUBLIC_INITIA_EVM_CHAIN_ID}
+      NEXT_PUBLIC_INITIA_RPC: ${NEXT_PUBLIC_INITIA_RPC}
+      NEXT_PUBLIC_INITIA_REST: ${NEXT_PUBLIC_INITIA_REST}
+      NEXT_PUBLIC_INITIA_JSON_RPC: ${NEXT_PUBLIC_INITIA_JSON_RPC}
+      NEXT_PUBLIC_INITIA_EXPLORER_URL: ${NEXT_PUBLIC_INITIA_EXPLORER_URL}
+      NEXT_PUBLIC_INITIA_ROUTER_API_URL: ${NEXT_PUBLIC_INITIA_ROUTER_API_URL}
+      NEXT_PUBLIC_INITIA_REGISTRY_URL: ${NEXT_PUBLIC_INITIA_REGISTRY_URL}
+      NEXT_PUBLIC_INITIA_GLYPH_URL: ${NEXT_PUBLIC_INITIA_GLYPH_URL}
+      
+      # App
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: 1
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - eco-network
+    restart: unless-stopped
+    profiles:
+      - app
+      - dev
+      - prod
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore:
+            - node_modules
+        - action: rebuild
+          path: package.json
 
+  # ---------------------------------------------------------------------------
+  # Initia Rapid Relayer (IBC Bridge)
+  # ---------------------------------------------------------------------------
   rapid-relayer:
     image: ghcr.io/initia-labs/rapid-relayer:v1.0.8
+    container_name: ecochain-relayer
     working_dir: /usr/rapid-relayer
     ports:
       - "3001:3001"
@@ -37,20 +167,31 @@ services:
     volumes:
       - ./relayer-config.json:/usr/rapid-relayer/config.json:ro
     environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - METRIC_PORT=3002
-      - LOG_LEVEL=info
-      - CONFIGFILE=/usr/rapid-relayer/config.json
-      - RELAYER_KEY_ECOCHAIN105=test
-      - RELAYER_KEY_INITIATION2=test
+      NODE_ENV: production
+      PORT: 3001
+      METRIC_PORT: 3002
+      LOG_LEVEL: info
+      CONFIGFILE: /usr/rapid-relayer/config.json
+      RELAYER_KEY_ECOCHAIN105: ${RELAYER_KEY_ECOCHAIN105:-test}
+      RELAYER_KEY_INITIATION2: ${RELAYER_KEY_INITIATION2:-test}
     networks:
       - eco-network
     extra_hosts:
-      - "localhost:host-gateway"
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    profiles:
+      - relayer
+      - prod
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   db-data:
+  redis-data:
 
 networks:
   eco-network:
+    driver: bridge

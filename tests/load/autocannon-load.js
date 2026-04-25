@@ -46,7 +46,36 @@ console.log(`   Connections: ${config.connections}`);
 console.log(`   Requests: ${config.requests}`);
 console.log('');
 
+async function checkServerRunning() {
+  try {
+    const response = await fetch(`${config.url}/api/health`, { 
+      signal: AbortSignal.timeout(5000) 
+    });
+    return response.status === 200;
+  } catch {
+    return false;
+  }
+}
+
 async function runSmokeTest() {
+  // Check if server is running first
+  const isRunning = await checkServerRunning();
+  if (!isRunning) {
+    console.error('❌ Server is not running at ' + config.url);
+    console.error('');
+    console.error('To start the server with Docker:');
+    console.error('   docker compose --profile dev up -d');
+    console.error('');
+    console.error('Or start locally (requires Redis + PostgreSQL):');
+    console.error('   pnpm dev');
+    console.error('');
+    console.error('Alternatively, test against a different URL:');
+    console.error('   pnpm run test:load -- --url https://your-api.com');
+    console.error('');
+    return false;
+  }
+  
+  console.log('✅ Server is running');
   console.log('Running smoke test...\n');
   
   let allPassed = true;
