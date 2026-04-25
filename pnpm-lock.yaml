@@ -51,7 +51,7 @@ importers:
         specifier: ^1.40.0
         version: 1.40.0
       '@prisma/adapter-pg':
-        specifier: 7.7.0
+        specifier: ^7.6.0
         version: 7.7.0
       '@prisma/client':
         specifier: ^7.6.0
