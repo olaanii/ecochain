@@ -119,7 +119,7 @@ export async function errorHandlerMiddleware(
   };
 
   if (details) {
-    response.details = details;
+    response.details = redactSensitiveData(details);
   }
 
   // Add request ID for tracking

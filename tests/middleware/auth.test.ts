@@ -3,7 +3,6 @@
  * Requirements: 16.1, 16.2, 16.3, 16.4, 29.2, 29.3, 29.4
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import {
   authMiddleware,
@@ -11,25 +10,25 @@ import {
   validateWalletMiddleware,
   rbacMiddleware,
   composeMiddleware,
-} from "src/lib/api/middleware/auth";
+} from "@/lib/api/middleware/auth";
 
 // Mock Clerk auth
-vi.mock("@clerk/nextjs/server", () => ({
-  auth: vi.fn(),
+jest.mock("@clerk/nextjs/server", () => ({
+  auth: jest.fn(),
 }));
 
 // Mock logger
-vi.mock("src/lib/api/logger", () => ({
-  logError: vi.fn(),
-  logWarn: vi.fn(),
-  logInfo: vi.fn(),
+jest.mock("@/lib/api/logger", () => ({
+  logError: jest.fn(),
+  logWarn: jest.fn(),
+  logInfo: jest.fn(),
 }));
 
 import { auth } from "@clerk/nextjs/server";
 
 describe("Authentication Middleware", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("authMiddleware", () => {
@@ -43,7 +42,7 @@ describe("Authentication Middleware", () => {
       expect(result.auth).toBeDefined();
       expect(result.auth?.userId).toBe("user_123");
       expect(result.auth?.clerkId).toBe("user_123");
-      expect(result.auth?.role).toBe("authenticated");
+      expect(result.auth?.role).toBe("user");
       expect(result.error).toBeUndefined();
     });
 
@@ -92,7 +91,7 @@ describe("Authentication Middleware", () => {
 
       expect(result.auth).toBeDefined();
       expect(result.auth?.userId).toBe("user_123");
-      expect(result.auth?.role).toBe("authenticated");
+      expect(result.auth?.role).toBe("user");
     });
 
     it("should return undefined auth when no userId", async () => {
@@ -127,7 +126,7 @@ describe("Authentication Middleware", () => {
       const authContext = {
         userId: "user_123",
         clerkId: "user_123",
-        role: "authenticated" as const,
+        role: "user" as const,
       };
 
       const result = await validateWalletMiddleware(request, authContext);
@@ -143,7 +142,7 @@ describe("Authentication Middleware", () => {
       const authContext = {
         userId: "user_123",
         clerkId: "user_123",
-        role: "authenticated" as const,
+        role: "user" as const,
       };
 
       const result = await validateWalletMiddleware(request, authContext);
@@ -163,7 +162,7 @@ describe("Authentication Middleware", () => {
       const authContext = {
         userId: "user_123",
         clerkId: "user_123",
-        role: "authenticated" as const,
+        role: "user" as const,
       };
 
       const result = await validateWalletMiddleware(request, authContext);
@@ -211,7 +210,7 @@ describe("Authentication Middleware", () => {
       const authContext = {
         userId: "user_123",
         clerkId: "user_123",
-        role: "authenticated" as const,
+        role: "user" as const,
       };
 
       const result = rbacMiddleware(authContext, ["admin", "owner"]);
@@ -227,7 +226,7 @@ describe("Authentication Middleware", () => {
         role: "public" as const,
       };
 
-      const result = rbacMiddleware(authContext, ["public", "authenticated"]);
+      const result = rbacMiddleware(authContext, ["public", "user"]);
 
       expect(result).toBeNull();
     });
@@ -248,7 +247,7 @@ describe("Authentication Middleware", () => {
       const authContext = {
         userId: "user_123",
         clerkId: "user_123",
-        role: "authenticated" as const,
+        role: "user" as const,
       };
 
       const result = rbacMiddleware(authContext, ["admin"]);
@@ -259,21 +258,21 @@ describe("Authentication Middleware", () => {
 
   describe("composeMiddleware", () => {
     it("should compose multiple middleware functions", async () => {
-      const middleware1 = vi.fn().mockResolvedValue({ auth: { userId: "user_123" } });
-      const middleware2 = vi.fn().mockResolvedValue({ auth: { role: "authenticated" } });
+      const middleware1 = jest.fn().mockResolvedValue({ auth: { userId: "user_123" } });
+      const middleware2 = jest.fn().mockResolvedValue({ auth: { role: "user" } });
 
       const request = new NextRequest("http://localhost:3000/api/test");
       const result = await composeMiddleware(request, [middleware1, middleware2]);
 
-      expect(middleware1).toHaveBeenCalledWith(request);
-      expect(middleware2).toHaveBeenCalledWith(request);
+      expect(middleware1).toHaveBeenCalledWith(request, undefined);
+      expect(middleware2).toHaveBeenCalledWith(request, { userId: "user_123" });
       expect(result.auth).toBeDefined();
     });
 
     it("should stop on first error", async () => {
       const errorResponse = new Response(null, { status: 401 });
-      const middleware1 = vi.fn().mockResolvedValue({ error: errorResponse });
-      const middleware2 = vi.fn();
+      const middleware1 = jest.fn().mockResolvedValue({ error: errorResponse });
+      const middleware2 = jest.fn();
 
       const request = new NextRequest("http://localhost:3000/api/test");
       const result = await composeMiddleware(request, [middleware1, middleware2]);

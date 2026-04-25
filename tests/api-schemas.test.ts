@@ -1,5 +1,3 @@
-import { describe, it } from "node:test";
-import assert from "node:assert";
 import {
   TasksQueryParamsSchema,
   VerifyRequestSchema,
@@ -20,11 +18,11 @@ describe("API Validation Schemas", () => {
       };
       
       const result = TasksQueryParamsSchema.safeParse(valid);
-      assert.strictEqual(result.success, true);
+      expect(result.success).toBe(true);
       if (result.success) {
-        assert.strictEqual(result.data.category, "transit");
-        assert.strictEqual(result.data.limit, 10);
-        assert.strictEqual(result.data.offset, 0);
+        expect(result.data.category).toBe("transit");
+        expect(result.data.limit).toBe(10);
+        expect(result.data.offset).toBe(0);
       }
     });
 
@@ -34,17 +32,17 @@ describe("API Validation Schemas", () => {
       };
       
       const result = TasksQueryParamsSchema.safeParse(invalid);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
 
     it("should apply default values", () => {
       const minimal = {};
       
       const result = TasksQueryParamsSchema.safeParse(minimal);
-      assert.strictEqual(result.success, true);
+      expect(result.success).toBe(true);
       if (result.success) {
-        assert.strictEqual(result.data.limit, 20);
-        assert.strictEqual(result.data.offset, 0);
+        expect(result.data.limit).toBe(20);
+        expect(result.data.offset).toBe(0);
       }
     });
 
@@ -54,7 +52,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = TasksQueryParamsSchema.safeParse(tooLarge);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -68,7 +66,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = VerifyRequestSchema.safeParse(valid);
-      assert.strictEqual(result.success, true);
+      expect(result.success).toBe(true);
     });
 
     it("should reject missing required fields", () => {
@@ -78,7 +76,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = VerifyRequestSchema.safeParse(invalid);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
 
     it("should validate optional oracle fields", () => {
@@ -92,7 +90,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = VerifyRequestSchema.safeParse(valid);
-      assert.strictEqual(result.success, true);
+      expect(result.success).toBe(true);
     });
 
     it("should reject invalid proof type", () => {
@@ -104,7 +102,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = VerifyRequestSchema.safeParse(invalid);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
 
     it("should reject oracle confidence outside 0-1 range", () => {
@@ -117,7 +115,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = VerifyRequestSchema.safeParse(invalid);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -129,7 +127,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = RedeemRequestSchema.safeParse(valid);
-      assert.strictEqual(result.success, true);
+      expect(result.success).toBe(true);
     });
 
     it("should reject missing required fields", () => {
@@ -139,7 +137,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = RedeemRequestSchema.safeParse(invalid);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
 
     it("should validate optional fields", () => {
@@ -152,7 +150,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = RedeemRequestSchema.safeParse(valid);
-      assert.strictEqual(result.success, true);
+      expect(result.success).toBe(true);
     });
 
     it("should reject empty required strings", () => {
@@ -162,7 +160,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = RedeemRequestSchema.safeParse(invalid);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -177,7 +175,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = BridgeInitiateRequestSchema.safeParse(valid);
-      assert.strictEqual(result.success, true);
+      expect(result.success).toBe(true);
     });
 
     it("should reject missing required fields", () => {
@@ -188,7 +186,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = BridgeInitiateRequestSchema.safeParse(invalid);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
 
     it("should reject non-positive amounts", () => {
@@ -201,7 +199,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = BridgeInitiateRequestSchema.safeParse(invalid);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
 
     it("should reject empty strings", () => {
@@ -214,7 +212,7 @@ describe("API Validation Schemas", () => {
       };
       
       const result = BridgeInitiateRequestSchema.safeParse(invalid);
-      assert.strictEqual(result.success, false);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -227,9 +225,9 @@ describe("API Validation Schemas", () => {
         };
         
         const result = validateRequestBody(RedeemRequestSchema, data);
-        assert.strictEqual(result.success, true);
+        expect(result.success).toBe(true);
         if (result.success) {
-          assert.strictEqual(result.data.rewardId, "reward-123");
+          expect(result.data.rewardId).toBe("reward-123");
         }
       });
 
@@ -240,9 +238,9 @@ describe("API Validation Schemas", () => {
         };
         
         const result = validateRequestBody(RedeemRequestSchema, data);
-        assert.strictEqual(result.success, false);
+        expect(result.success).toBe(false);
         if (!result.success) {
-          assert.ok(result.error);
+          expect(result.error).toBeDefined();
         }
       });
     });
@@ -255,10 +253,10 @@ describe("API Validation Schemas", () => {
         });
         
         const result = validateQueryParams(TasksQueryParamsSchema, params);
-        assert.strictEqual(result.success, true);
+        expect(result.success).toBe(true);
         if (result.success) {
-          assert.strictEqual(result.data.category, "transit");
-          assert.strictEqual(result.data.limit, 10);
+          expect(result.data.category).toBe("transit");
+          expect(result.data.limit).toBe(10);
         }
       });
 
@@ -268,7 +266,7 @@ describe("API Validation Schemas", () => {
         });
         
         const result = validateQueryParams(TasksQueryParamsSchema, params);
-        assert.strictEqual(result.success, false);
+        expect(result.success).toBe(false);
       });
     });
 
@@ -280,15 +278,15 @@ describe("API Validation Schemas", () => {
         };
         
         const parseResult = RedeemRequestSchema.safeParse(data);
-        assert.strictEqual(parseResult.success, false);
+        expect(parseResult.success).toBe(false);
         
         if (!parseResult.success) {
           const formatted = formatValidationError(parseResult.error);
-          assert.strictEqual(formatted.message, "Validation failed");
-          assert.ok(Array.isArray(formatted.details));
-          assert.ok(formatted.details.length > 0);
-          assert.ok(formatted.details[0].field !== undefined);
-          assert.ok(formatted.details[0].message !== undefined);
+          expect(formatted.message).toBe("Validation failed");
+          expect(Array.isArray(formatted.details)).toBe(true);
+          expect(formatted.details.length).toBeGreaterThan(0);
+          expect(formatted.details[0].field).toBeDefined();
+          expect(formatted.details[0].message).toBeDefined();
         }
       });
     });

@@ -3,7 +3,6 @@
  * Requirements: 26.1, 26.2, 26.3, 26.4, 26.7
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import {
   errorHandlerMiddleware,
@@ -12,18 +11,18 @@ import {
   ApiError,
   ApiErrors,
   withErrorHandling,
-} from "src/lib/api/middleware/error-handler";
+} from "@/lib/api/middleware/error-handler";
 
 // Mock logger
-vi.mock("src/lib/api/logger", () => ({
-  logError: vi.fn(),
-  logWarn: vi.fn(),
-  logInfo: vi.fn(),
+jest.mock("@/lib/api/logger", () => ({
+  logError: jest.fn(),
+  logWarn: jest.fn(),
+  logInfo: jest.fn(),
 }));
 
 describe("Error Handler Middleware", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("ApiError", () => {
@@ -160,7 +159,7 @@ describe("Error Handler Middleware", () => {
 
     it("should redact sensitive data from details", async () => {
       const error = new ApiError(400, "Error", "TEST", {
-        walletAddress: "initia1abcdefghijklmnopqrstuvwxyz1234567890ab",
+        walletAddress: "initia1abcdefghijklmnopqrstuvwxyz123456789012",
         apiKey: "secret-key-123",
       });
       const request = new NextRequest("http://localhost:3000/api/test");
@@ -169,6 +168,8 @@ describe("Error Handler Middleware", () => {
       const response = await errorHandlerMiddleware(error, request, context);
       const body = await response.json();
 
+      // The redactSensitiveData function checks for keys containing "address", "wallet", "key", "secret"
+      // and directly replaces the value with "[REDACTED]"
       expect(body.details.walletAddress).toBe("[REDACTED]");
       expect(body.details.apiKey).toBe("[REDACTED]");
     });
@@ -238,7 +239,7 @@ describe("Error Handler Middleware", () => {
 
   describe("withErrorHandling", () => {
     it("should catch errors and return error response", async () => {
-      const handler = vi.fn().mockRejectedValue(new Error("Handler error"));
+      const handler = jest.fn().mockRejectedValue(new Error("Handler error"));
       const wrappedHandler = withErrorHandling(handler);
 
       const request = new NextRequest("http://localhost:3000/api/test");
@@ -251,7 +252,7 @@ describe("Error Handler Middleware", () => {
 
     it("should pass through successful responses", async () => {
       const successResponse = new Response(JSON.stringify({ success: true }), { status: 200 });
-      const handler = vi.fn().mockResolvedValue(successResponse);
+      const handler = jest.fn().mockResolvedValue(successResponse);
       const wrappedHandler = withErrorHandling(handler);
 
       const request = new NextRequest("http://localhost:3000/api/test");

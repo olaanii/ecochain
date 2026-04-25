@@ -3,7 +3,6 @@
  * Requirements: 24.1, 24.2, 24.3, 24.4, 24.5, 24.6, 24.7
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import {
   checkRateLimit,
@@ -11,21 +10,21 @@ import {
   blockchainRateLimitMiddleware,
   resetRateLimit,
   getRateLimitStatus,
-} from "src/lib/api/middleware/rate-limit";
-import { redis } from "src/lib/redis/client";
+} from "@/lib/api/middleware/rate-limit";
+import { redis } from "@/lib/redis/client";
 
 // Mock Redis
-vi.mock("src/lib/redis/client", () => ({
+jest.mock("@/lib/redis/client", () => ({
   redis: {
-    incr: vi.fn(),
-    pexpire: vi.fn(),
-    del: vi.fn(),
+    incr: jest.fn(),
+    pexpire: jest.fn(),
+    del: jest.fn(),
   },
 }));
 
 describe("Rate Limiting Middleware", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("checkRateLimit", () => {

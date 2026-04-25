@@ -5,23 +5,22 @@
  * Tests auto-sign session management, expiration, and fallback behavior
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock session storage
 const mockSessionStorage = (() => {
   let store: Record<string, string> = {};
 
   return {
-    getItem: (key: string) => store[key] || null,
-    setItem: (key: string, value: string) => {
+    getItem: jest.fn((key: string) => store[key] || null),
+    setItem: jest.fn((key: string, value: string) => {
       store[key] = value;
-    },
-    removeItem: (key: string) => {
+    }),
+    removeItem: jest.fn((key: string) => {
       delete store[key];
-    },
-    clear: () => {
+    }),
+    clear: jest.fn(() => {
       store = {};
-    },
+    }),
   };
 })();
 
@@ -33,7 +32,7 @@ Object.defineProperty(window, "sessionStorage", {
 describe("AutosignContext", () => {
   beforeEach(() => {
     mockSessionStorage.clear();
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -285,7 +284,7 @@ describe("AutosignContext", () => {
 
   describe("Error Handling", () => {
     it("should handle session storage errors gracefully", () => {
-      const mockSetItem = vi.spyOn(mockSessionStorage, "setItem");
+      const mockSetItem = jest.spyOn(mockSessionStorage, "setItem");
       mockSetItem.mockImplementation(() => {
         throw new Error("Storage quota exceeded");
       });

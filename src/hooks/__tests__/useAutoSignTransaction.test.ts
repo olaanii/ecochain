@@ -5,12 +5,11 @@
  * Tests transaction signing with auto-sign and fallback behavior
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
 import { shouldUseAutoSign, getSigningMethodDescription } from "@/lib/wallet/auto-sign-manager";
 
 describe("useAutoSignTransaction", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("shouldUseAutoSign", () => {
@@ -66,8 +65,8 @@ describe("useAutoSignTransaction", () => {
 
   describe("Transaction Signing", () => {
     it("should use auto-sign when available", async () => {
-      const signFn = vi.fn().mockResolvedValue({ hash: "0x123" });
-      const onAutoSignUsed = vi.fn();
+      const signFn = jest.fn().mockResolvedValue({ hash: "0x123" });
+      const onAutoSignUsed = jest.fn();
 
       const canUseAutoSign = shouldUseAutoSign(true, false, false);
       expect(canUseAutoSign).toBe(true);
@@ -82,8 +81,8 @@ describe("useAutoSignTransaction", () => {
     });
 
     it("should fallback to manual signing when auto-sign unavailable", async () => {
-      const signFn = vi.fn().mockResolvedValue({ hash: "0x123" });
-      const onManualSignRequired = vi.fn();
+      const signFn = jest.fn().mockResolvedValue({ hash: "0x123" });
+      const onManualSignRequired = jest.fn();
 
       const canUseAutoSign = shouldUseAutoSign(false, false, false);
       expect(canUseAutoSign).toBe(false);
@@ -98,8 +97,8 @@ describe("useAutoSignTransaction", () => {
     });
 
     it("should fallback to manual signing when session expired", async () => {
-      const signFn = vi.fn().mockResolvedValue({ hash: "0x123" });
-      const onManualSignRequired = vi.fn();
+      const signFn = jest.fn().mockResolvedValue({ hash: "0x123" });
+      const onManualSignRequired = jest.fn();
 
       const canUseAutoSign = shouldUseAutoSign(true, true, false);
       expect(canUseAutoSign).toBe(false);
@@ -114,8 +113,8 @@ describe("useAutoSignTransaction", () => {
     });
 
     it("should fallback to manual signing when session expiring soon", async () => {
-      const signFn = vi.fn().mockResolvedValue({ hash: "0x123" });
-      const onManualSignRequired = vi.fn();
+      const signFn = jest.fn().mockResolvedValue({ hash: "0x123" });
+      const onManualSignRequired = jest.fn();
 
       const canUseAutoSign = shouldUseAutoSign(true, false, true);
       expect(canUseAutoSign).toBe(false);
@@ -132,7 +131,7 @@ describe("useAutoSignTransaction", () => {
 
   describe("Session Expiry Notifications", () => {
     it("should notify when session is expiring soon", () => {
-      const onSessionExpiring = vi.fn();
+      const onSessionExpiring = jest.fn();
       const isSessionExpiring = true;
 
       if (isSessionExpiring) {
@@ -143,7 +142,7 @@ describe("useAutoSignTransaction", () => {
     });
 
     it("should not notify when session is not expiring", () => {
-      const onSessionExpiring = vi.fn();
+      const onSessionExpiring = jest.fn();
       const isSessionExpiring = false;
 
       if (isSessionExpiring) {
@@ -154,7 +153,7 @@ describe("useAutoSignTransaction", () => {
     });
 
     it("should notify only once per expiry period", () => {
-      const onSessionExpiring = vi.fn();
+      const onSessionExpiring = jest.fn();
       let hasNotifiedExpiring = false;
       const isSessionExpiring = true;
 
@@ -198,11 +197,12 @@ describe("useAutoSignTransaction", () => {
     });
 
     it("should handle null expiry time", () => {
-      const expiryTime = null;
+      const expiryTime: Date | null = null;
 
-      const timeUntilExpiry = expiryTime
-        ? Math.max(0, Math.floor((expiryTime.getTime() - Date.now()) / 60000))
-        : 0;
+      let timeUntilExpiry = 0;
+      if (expiryTime !== null) {
+        timeUntilExpiry = Math.max(0, Math.floor((expiryTime as Date).getTime() - Date.now()) / 60000);
+      }
 
       expect(timeUntilExpiry).toBe(0);
     });
@@ -210,8 +210,8 @@ describe("useAutoSignTransaction", () => {
 
   describe("Error Handling", () => {
     it("should handle signing errors gracefully", async () => {
-      const signFn = vi.fn().mockRejectedValue(new Error("Signing failed"));
-      const onManualSignRequired = vi.fn();
+      const signFn = jest.fn().mockRejectedValue(new Error("Signing failed"));
+      const onManualSignRequired = jest.fn();
 
       const canUseAutoSign = shouldUseAutoSign(true, false, false);
 
@@ -227,12 +227,11 @@ describe("useAutoSignTransaction", () => {
     });
 
     it("should fallback to manual signing on auto-sign failure", async () => {
-      const signFn = vi
-        .fn()
+      const signFn = jest.fn()
         .mockRejectedValueOnce(new Error("Auto-sign failed"))
         .mockResolvedValueOnce({ hash: "0x123" });
 
-      const onManualSignRequired = vi.fn();
+      const onManualSignRequired = jest.fn();
       let canUseAutoSign = shouldUseAutoSign(true, false, false);
 
       try {

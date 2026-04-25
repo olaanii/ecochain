@@ -4,7 +4,6 @@
  * Tests for blockchain event listener functionality
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventListener, BlockchainEvent } from '../event-listener';
 import { EventQueue } from '../event-queue';
 

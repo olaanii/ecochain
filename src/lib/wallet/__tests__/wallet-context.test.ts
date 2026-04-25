@@ -1,9 +1,39 @@
 /**
  * Wallet Context Tests
- * 
+ *
  * Tests for wallet connection, state management, and session storage
  * Requirement 16.2, 16.3, 16.4, 16.5
  */
+
+// Mock sessionStorage for Jest Node environment
+const mockSessionStorage = (() => {
+  let store: Record<string, string> = {};
+
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+
+Object.defineProperty(global, 'sessionStorage', {
+  value: mockSessionStorage,
+});
+
+// Mock window object to make sessionStorage accessible
+Object.defineProperty(global, 'window', {
+  value: {
+    sessionStorage: mockSessionStorage,
+  },
+  writable: true,
+});
 
 import {
   storeWalletAddress,

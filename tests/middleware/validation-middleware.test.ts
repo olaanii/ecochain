@@ -3,7 +3,6 @@
  * Requirements: 25.1, 25.2, 25.3, 25.5, 25.6, 25.7, 25.8
  */
 
-import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
 import {
   validationMiddleware,
@@ -14,7 +13,7 @@ import {
   StakeSubmissionSchema,
   RedemptionSchema,
   VoteSubmissionSchema,
-} from "src/lib/api/middleware/validation";
+} from "@/lib/api/middleware/validation";
 import { z } from "zod";
 
 describe("Validation Middleware", () => {

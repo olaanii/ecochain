@@ -69,7 +69,7 @@ jobs:
         run: npm install -g solhint
 
       - name: Solhint (style + security)
-        run: solhint 'src/**/*.sol' --no-table
+        run: solhint 'src/**/*.sol'
 
       - name: Install Slither
         run: pip3 install slither-analyzer

@@ -3,7 +3,6 @@
  * Requirements: 26.1, 26.8, 35.1
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 import {
   loggingMiddleware,
@@ -12,20 +11,20 @@ import {
   logResponseTime,
   logApiMetrics,
   withLogging,
-} from "src/lib/api/middleware/logging";
+} from "@/lib/api/middleware/logging";
 
 // Mock logger
-vi.mock("src/lib/api/logger", () => ({
-  logInfo: vi.fn(),
-  logWarn: vi.fn(),
-  logError: vi.fn(),
+jest.mock("@/lib/api/logger", () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
 }));
 
-import { logInfo, logWarn, logError } from "src/lib/api/logger";
+import { logInfo, logWarn, logError } from "@/lib/api/logger";
 
 describe("Logging Middleware", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("generateRequestId", () => {
@@ -50,7 +49,7 @@ describe("Logging Middleware", () => {
 
   describe("loggingMiddleware", () => {
     it("should log successful request with 200 status", async () => {
-      const handler = vi.fn().mockResolvedValue(
+      const handler = jest.fn().mockResolvedValue(
         new NextResponse(JSON.stringify({ success: true }), { status: 200 })
       );
 
@@ -70,7 +69,7 @@ describe("Logging Middleware", () => {
     });
 
     it("should log client error with 400 status", async () => {
-      const handler = vi.fn().mockResolvedValue(
+      const handler = jest.fn().mockResolvedValue(
         new NextResponse(JSON.stringify({ error: "Bad request" }), { status: 400 })
       );
 
@@ -84,7 +83,7 @@ describe("Logging Middleware", () => {
     });
 
     it("should log server error with 500 status", async () => {
-      const handler = vi.fn().mockResolvedValue(
+      const handler = jest.fn().mockResolvedValue(
         new NextResponse(JSON.stringify({ error: "Server error" }), { status: 500 })
       );
 
@@ -98,9 +97,9 @@ describe("Logging Middleware", () => {
     });
 
     it("should add correlation ID to request headers", async () => {
-      let capturedRequest: NextRequest | null = null;
+      let capturedRequest: any = null;
 
-      const handler = vi.fn().mockImplementation((req: NextRequest) => {
+      const handler = jest.fn().mockImplementation((req: NextRequest) => {
         capturedRequest = req;
         return Promise.resolve(new NextResponse(null, { status: 200 }));
       });
@@ -113,7 +112,7 @@ describe("Logging Middleware", () => {
     });
 
     it("should add correlation ID to response headers", async () => {
-      const handler = vi.fn().mockResolvedValue(
+      const handler = jest.fn().mockResolvedValue(
         new NextResponse(null, { status: 200 })
       );
 
@@ -125,7 +124,7 @@ describe("Logging Middleware", () => {
     });
 
     it("should capture request duration", async () => {
-      const handler = vi.fn().mockImplementation(async () => {
+      const handler = jest.fn().mockImplementation(async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         return new NextResponse(null, { status: 200 });
       });
@@ -138,7 +137,7 @@ describe("Logging Middleware", () => {
     });
 
     it("should capture IP address from x-forwarded-for header", async () => {
-      const handler = vi.fn().mockResolvedValue(
+      const handler = jest.fn().mockResolvedValue(
         new NextResponse(null, { status: 200 })
       );
 
@@ -154,7 +153,7 @@ describe("Logging Middleware", () => {
     });
 
     it("should capture user agent", async () => {
-      const handler = vi.fn().mockResolvedValue(
+      const handler = jest.fn().mockResolvedValue(
         new NextResponse(null, { status: 200 })
       );
 
@@ -170,7 +169,7 @@ describe("Logging Middleware", () => {
     });
 
     it("should handle handler errors", async () => {
-      const handler = vi.fn().mockRejectedValue(new Error("Handler failed"));
+      const handler = jest.fn().mockRejectedValue(new Error("Handler failed"));
 
       const request = new NextRequest("http://localhost:3000/api/test");
 
@@ -258,7 +257,7 @@ describe("Logging Middleware", () => {
 
   describe("withLogging", () => {
     it("should wrap handler with logging", async () => {
-      const handler = vi.fn().mockResolvedValue(
+      const handler = jest.fn().mockResolvedValue(
         new NextResponse(JSON.stringify({ success: true }), { status: 200 })
       );
 
@@ -272,7 +271,7 @@ describe("Logging Middleware", () => {
     });
 
     it("should add correlation ID to response", async () => {
-      const handler = vi.fn().mockResolvedValue(
+      const handler = jest.fn().mockResolvedValue(
         new NextResponse(null, { status: 200 })
       );
 
