@@ -20,7 +20,7 @@ jobs:
     name: Contract Health Monitoring
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -137,7 +137,7 @@ jobs:
     name: On-Chain Event Monitoring
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install dependencies
         run: |
