@@ -14,6 +14,7 @@ overrides:
   '@cosmjs/tendermint-rpc': 0.36.2
   '@initia/interwovenkit-react>@noble/hashes': 1.8.0
   '@initia/utils>@noble/hashes': 1.8.0
+  cosmjs-types: 0.9.0
 
 importers:
 
@@ -24,7 +25,7 @@ importers:
         version: 7.0.7(next@16.2.1(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@initia/interwovenkit-react':
         specifier: ^2.5.1
-        version: 2.5.1(eb31582d299b81f3c514a4478f032cc6)
+        version: 2.5.1(26d64a3ab56ca4a0ae9f45d1f5d53aa0)
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -892,7 +893,7 @@ packages:
       bignumber.js: '>=9.0.0'
       change-case: '>=5.0.0'
       clsx: '>=2.0.0'
-      cosmjs-types: '>=0.10.0'
+      cosmjs-types: 0.9.0
       date-fns: '>=4.0.0'
       ethers: '>=6.0.0'
       jotai: '>=2.0.0'
@@ -4299,12 +4300,8 @@ packages:
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
 
-  cosmjs-types@0.10.1:
-    resolution: {integrity: sha512-CENXb4O5GN+VyB68HYXFT2SOhv126Z59631rZC56m8uMWa6/cSlFeai8BwZGT1NMepw0Ecf+U8XSOnBzZUWh9Q==}
-
-  cosmjs-types@0.11.0:
-    resolution: {integrity: sha512-kDSkgHpRTrg1413jCNehT3P21+EBxZWFMBr9JEzVfmPiNdtuwAoLAkCYo7c7i/pTakAwyHsXbxOg8kkD+AN33w==}
-    engines: {node: '>=20.19'}
+  cosmjs-types@0.9.0:
+    resolution: {integrity: sha512-MN/yUe6mkJwHnCFfsNPeCfXVhyxHYW6c/xDUzrSbBycYzw++XvWDMJArXp2pLdgD6FQ8DW79vkPjeNKVrXaHeQ==}
 
   cpu-features@0.0.10:
     resolution: {integrity: sha512-9IkYqtX3YHPCzoVg1Py+o9057a3i0fp7S530UWokCSaFVTc7CwXPRiOjRjBQQ18ZCNafx78YfnG+HALxtVmOGA==}
@@ -8576,7 +8573,7 @@ snapshots:
       '@cosmjs/stargate': 0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@cosmjs/tendermint-rpc': 0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@cosmjs/utils': 0.38.1
-      cosmjs-types: 0.11.0
+      cosmjs-types: 0.9.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -8611,7 +8608,7 @@ snapshots:
       '@cosmjs/encoding': 0.36.2
       '@cosmjs/math': 0.36.2
       '@cosmjs/utils': 0.36.2
-      cosmjs-types: 0.10.1
+      cosmjs-types: 0.9.0
 
   '@cosmjs/socket@0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
     dependencies:
@@ -8632,7 +8629,7 @@ snapshots:
       '@cosmjs/stream': 0.36.2
       '@cosmjs/tendermint-rpc': 0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@cosmjs/utils': 0.36.2
-      cosmjs-types: 0.10.1
+      cosmjs-types: 0.9.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -8954,7 +8951,7 @@ snapshots:
     transitivePeerDependencies:
       - google-protobuf
 
-  '@initia/interwovenkit-react@2.5.1(eb31582d299b81f3c514a4478f032cc6)':
+  '@initia/interwovenkit-react@2.5.1(26d64a3ab56ca4a0ae9f45d1f5d53aa0)':
     dependencies:
       '@amplitude/analytics-browser': 2.38.0
       '@base-ui/react': 1.0.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -8980,7 +8977,7 @@ snapshots:
       bignumber.js: 10.0.2
       change-case: 5.4.4
       clsx: 2.1.1
-      cosmjs-types: 0.11.0
+      cosmjs-types: 0.9.0
       date-fns: 4.1.0
       ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       jotai: 2.19.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4)
@@ -13644,9 +13641,7 @@ snapshots:
 
   core-util-is@1.0.3: {}
 
-  cosmjs-types@0.10.1: {}
-
-  cosmjs-types@0.11.0: {}
+  cosmjs-types@0.9.0: {}
 
   cpu-features@0.0.10:
     dependencies:
