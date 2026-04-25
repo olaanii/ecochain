@@ -22,13 +22,19 @@ import { writeAuditLog, AuditActions } from "@/lib/audit/log";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const result = await verifyClerkWebhook(request);
-  if (!result.ok) return result.response;
-
-  const { event } = result;
-  const data = event.data as Record<string, unknown>;
+  console.log("[Webhook] Received Clerk webhook request");
 
   try {
+    const result = await verifyClerkWebhook(request);
+    if (!result.ok) {
+      console.log("[Webhook] Verification failed:", result.response);
+      return result.response;
+    }
+
+    const { event } = result;
+    const data = event.data as Record<string, unknown>;
+    console.log("[Webhook] Processing event:", event.type, "for user:", data.id);
+
     switch (event.type) {
       case "user.created": {
         const email =
@@ -39,9 +45,12 @@ export async function POST(request: NextRequest) {
         const displayName =
           [firstName, lastName].filter(Boolean).join(" ") || email.split("@")[0];
 
+        console.log("[Webhook] Creating user:", { clerkId: data.id, email, displayName });
+
         // Check if this is the first user - make them admin
         const userCount = await prisma.user.count();
         const role = userCount === 0 ? "admin" : "user";
+        console.log("[Webhook] User count:", userCount, "assigning role:", role);
 
         await prisma.user.upsert({
           where: { clerkId: data.id as string },
@@ -53,6 +62,7 @@ export async function POST(request: NextRequest) {
           },
           update: { email, displayName },
         });
+        console.log("[Webhook] User created/updated successfully");
         break;
       }
 
@@ -63,6 +73,8 @@ export async function POST(request: NextRequest) {
         const lastName = (data.last_name as string) ?? "";
         const displayName = [firstName, lastName].filter(Boolean).join(" ") || undefined;
 
+        console.log("[Webhook] Updating user:", { clerkId: data.id, email, displayName });
+
         await prisma.user.updateMany({
           where: { clerkId: data.id as string },
           data: {
@@ -70,10 +82,12 @@ export async function POST(request: NextRequest) {
             ...(displayName ? { displayName } : {}),
           },
         });
+        console.log("[Webhook] User updated successfully");
         break;
       }
 
       case "user.deleted": {
+        console.log("[Webhook] Deleting user:", data.id);
         const user = await prisma.user.findUnique({
           where: { clerkId: data.id as string },
           select: { id: true },
@@ -90,17 +104,22 @@ export async function POST(request: NextRequest) {
             resourceId: user.id,
             payload: { source: "clerk.webhook", clerkId: data.id },
           });
+          console.log("[Webhook] User soft-deleted successfully");
+        } else {
+          console.log("[Webhook] User not found for deletion");
         }
         break;
       }
 
       default:
+        console.log("[Webhook] Unhandled event type:", event.type);
         break;
     }
+
+    return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("[Webhook] Error processing Clerk event:", event.type, err);
+    console.error("[Webhook] Error processing Clerk event:", err);
+    console.error("[Webhook] Error stack:", err instanceof Error ? err.stack : "No stack");
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
 }
