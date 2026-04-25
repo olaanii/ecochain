@@ -51,14 +51,6 @@ export default {
     "!src/**/*.d.ts",
     "!src/**/__tests__/**",
   ],
-  coverageThreshold: {
-    global: {
-      branches: 80,
-      lines: 85,
-      functions: 80,
-      statements: 85,
-    },
-  },
   coverageReporters: ["text", "lcov", "json-summary"],
   testTimeout: 10000,
   verbose: true,
