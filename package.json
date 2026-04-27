@@ -114,7 +114,7 @@
     "jest-environment-jsdom": "^30.3.0",
     "pg": "^8.12.0",
     "playwright": "^1.49.0",
-    "prisma": "^7.6.0",
+    "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "testcontainers": "^10.9.0",
     "ts-jest": "^29.4.6",
